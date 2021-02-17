@@ -44,7 +44,7 @@ Send to benchmark:
   script:
     - "curl -H \"PRIVATE-TOKEN: $SIT_TOKEN\" \"https://gitlab.insight-centre.org/api/v4/projects/2180/repository/files/test_benchmark.py/raw?ref=master\" -o test_benchmark.py"
     - cat test_benchmark.py
-    - python test_benchmark.py ${BENCHMARK_PLATFORM_CONTROLLER_URL} client-manager $CI_REGISTRY_IMAGE $CI_COMMIT_REF_NAME
+    # - python test_benchmark.py ${BENCHMARK_PLATFORM_CONTROLLER_URL} client-manager $CI_REGISTRY_IMAGE $CI_COMMIT_REF_NAME
   when: manual
   allow_failure: false
 
