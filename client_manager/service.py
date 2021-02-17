@@ -80,7 +80,6 @@ class ClientManager(BaseTracerService):
 
     def add_query_action(self, subscriber_id, query_text):
         query = self.create_query_dict(subscriber_id, query_text)
-        query['from'] = 'test'
         if query['id'] not in self.queries.keys():
             self.queries[query['id']] = query
             self.update_bufferstreams_from_new_query(query=query)

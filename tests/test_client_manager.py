@@ -30,7 +30,7 @@ class TestClientManager(MockedServiceStreamTestCase):
     OUTPUT K_GRAPH_JSON
     CONTENT ObjectDetection, ColorDetection
     MATCH (c1:Car {color:'blue'}) AND (c2:Car {color:'white'})
-    FROM teste
+    FROM test
     WITHIN TUMBLING_COUNT_WINDOW(2)
     RETURN *
     """.strip()
@@ -132,7 +132,11 @@ class TestClientManager(MockedServiceStreamTestCase):
     def test_add_query_should_properly_include_query_into_datastructure(self, mocked_query_dict):
         subscriber_id = 'sub1'
         query_id = 123
-        query_dict = {'id': query_id, 'etc': '...'}
+        query_dict = {
+            'id': query_id,
+            'from': 'test',
+            'etc': '...'
+        }
         mocked_query_dict.return_value = query_dict
         self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
@@ -144,8 +148,16 @@ class TestClientManager(MockedServiceStreamTestCase):
     def test_add_query_shouldn_include_duplicated_query(self, mocked_query_dict):
         subscriber_id = 'sub1'
         query_id = 123
-        query_dict = {'id': query_id, 'etc': '...'}
-        query_dict2 = {'id': query_id, 'other': '...'}
+        query_dict = {
+            'id': query_id,
+            'from': 'test',
+            'etc': '...'
+        }
+        query_dict2 = {
+            'id': query_id,
+            'from': 'test',
+            'other': '...'
+        }
         mocked_query_dict.return_value = query_dict
         self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
