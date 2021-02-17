@@ -34,15 +34,41 @@ class ClientManager(BaseTracerService):
         # do something here
         pass
 
+    def add_query_action(self, subscriber_id, query):
+        pass
+
+    def del_query_action(self, subscriber_id, query_name):
+        pass
+
+    def pub_join_action(self, publisher_id, source, meta):
+        pass
+
+    def pub_leave_action(self, publisher_id):
+        pass
+
     def process_action(self, action, event_data, json_msg):
         if not super(ClientManager, self).process_action(action, event_data, json_msg):
             return False
-        if action == 'someAction':
-            # do some action
-            pass
-        elif action == 'otherAction':
-            # do some other action
-            pass
+        if action == 'addQuery':
+            self.add_query_action(
+                subscriber_id=event_data['subscriber_id'],
+                query=event_data['query']
+            )
+        elif action == 'delQuery':
+            self.del_query_action(
+                subscriber_id=event_data['subscriber_id'],
+                query_name=event_data['query_name']
+            )
+        elif action == 'pubJoin':
+            self.pub_join_action(
+                publisher_id=event_data['publisher_id'],
+                source=event_data['source'],
+                meta=event_data['meta']
+            )
+        elif action == 'pubLeave':
+            self.pub_leave_action(
+                publisher_id=event_data['publisher_id']
+            )
 
     def log_state(self):
         super(ClientManager, self).log_state()
