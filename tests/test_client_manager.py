@@ -242,3 +242,48 @@ class TestClientManager(MockedServiceStreamTestCase):
         self.assertEqual(query['id'], query_id)
         self.assertEqual(query['subscriber_id'], subscriber_id)
         self.assertEqual(query['name'], expected_query_name)
+
+    @patch('client_manager.service.ClientManager.get_unique_buffer_hash')
+    def test_update_bufferstreams_from_new_query_should_update_bufferstreams(self, mocked_unique_buff):
+        query_id = '123'
+        bufferstream_key = 'bufferstream-key'
+        mocked_unique_buff.return_value = bufferstream_key
+        self.service.publishers = {
+            'pub1': {
+                'meta': {
+                    'fps': '30',
+                    'resolution': '300x300',
+                }
+            }
+        }
+        query = {
+            'id': query_id,
+            'from': ['pub1']
+        }
+
+        self.service.update_bufferstreams_from_new_query(query)
+        mocked_unique_buff.assert_called_once_with('pub1', '300x300', '30')
+        self.assertIn(bufferstream_key, self.service.buffer_hash_to_query_map)
+        self.assertEqual(self.service.buffer_hash_to_query_map[bufferstream_key], set({query_id}))
+
+    @patch('client_manager.service.ClientManager.get_unique_buffer_hash')
+    def test_update_bufferstreams_from_new_query_should_not_update_bufferstreams_if_no_pub(self, mocked_unique_buff):
+        query_id = '123'
+        bufferstream_key = 'bufferstream-key'
+        mocked_unique_buff.return_value = bufferstream_key
+        self.service.publishers = {
+            'pub1': {
+                'meta': {
+                    'fps': '30',
+                    'resolution': '300x300',
+                }
+            }
+        }
+        query = {
+            'id': query_id,
+            'from': ['pub2']
+        }
+
+        self.service.update_bufferstreams_from_new_query(query)
+        self.assertFalse(mocked_unique_buff.called)
+        self.assertNotIn(bufferstream_key, self.service.buffer_hash_to_query_map)

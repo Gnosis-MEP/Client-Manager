@@ -27,8 +27,8 @@ class ClientManager(BaseTracerService):
 
         self.query_parser = QueryParser()
 
-        self.subscribers = {}
         self.queries = {}
+        self.buffer_hash_to_query_map = {}
         self.publishers = {}
 
     # def send_event_to_somewhere(self, event_data):
@@ -42,6 +42,11 @@ class ClientManager(BaseTracerService):
         # do something here
         pass
 
+    def get_unique_buffer_hash(self, publisher_id, resolution, fps):
+        unhashed_key = '-'.join([publisher_id, resolution, fps])
+        hash_key = hashlib.md5(unhashed_key.encode())
+        return hash_key.hexdigest()
+
     def create_query_id(self, subscriber_id, query_name):
         key = f'{subscriber_id}_{query_name}'
         query_id = hashlib.md5(key.encode('utf-8')).hexdigest()
@@ -54,10 +59,31 @@ class ClientManager(BaseTracerService):
         query['subscriber_id'] = subscriber_id
         return query
 
+    def update_bufferstreams_from_new_query(self, query):
+        publisher_id = query['from'][0]
+        publisher = self.publishers.get(publisher_id, None)
+        if publisher is None:
+            self.logger.info(f'Publisher id {publisher_id} not available. Will not process Query {query}')
+            return
+        buffer_hash = self.get_unique_buffer_hash(
+            publisher_id, publisher['meta']['resolution'], publisher['meta']['fps']
+        )
+        buffer_query_set = self.buffer_hash_to_query_map.setdefault(buffer_hash, set())
+        query_set_was_empty = len(buffer_query_set) == 0
+        query_id = query['id']
+        buffer_query_set.add(query_id)
+        if query_set_was_empty:
+            pass
+            # self.send_start_preprocessor_action(
+            #     publisher_id, source, resolution, fps, list(buffer_query_set), buffer_hash)
+            # self.send_add_buffer_stream_key_to_event_dispatcher(publisher_id, buffer_hash)
+
     def add_query_action(self, subscriber_id, query_text):
         query = self.create_query_dict(subscriber_id, query_text)
+        query['from'] = 'test'
         if query['id'] not in self.queries.keys():
             self.queries[query['id']] = query
+            self.update_bufferstreams_from_new_query(query=query)
         else:
             self.logger.info('Ignoring duplicated query addition')
 
@@ -109,9 +135,9 @@ class ClientManager(BaseTracerService):
 
     def log_state(self):
         super(ClientManager, self).log_state()
-        self._log_dict('Subscribers', self.queries)
+        self._log_dict('Publishers', self.publishers)
         self._log_dict('Queries', self.queries)
-        self._log_dict('Publishers', self.queries)
+        self._log_dict('Bufferstreams', self.buffer_hash_to_query_map)
 
     def run(self):
         super(ClientManager, self).run()
