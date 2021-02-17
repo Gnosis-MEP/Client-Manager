@@ -128,8 +128,9 @@ class TestClientManager(MockedServiceStreamTestCase):
         expected = '6962607866718b3cbd13556162c95dd9'
         self.assertEqual(res, expected)
 
+    @patch('client_manager.service.ClientManager.update_bufferstreams_from_new_query')
     @patch('client_manager.service.ClientManager.create_query_dict')
-    def test_add_query_should_properly_include_query_into_datastructure(self, mocked_query_dict):
+    def test_add_query_should_properly_include_query_into_datastructure(self, mocked_query_dict, mocked_buffer):
         subscriber_id = 'sub1'
         query_id = 123
         query_dict = {
@@ -141,6 +142,7 @@ class TestClientManager(MockedServiceStreamTestCase):
         self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
         mocked_query_dict.assert_called_once_with(subscriber_id, self.SIMPLE_QUERY_TEXT)
+        mocked_buffer.assert_called_once_with(query=query_dict)
         self.assertIn(123, self.service.queries.keys())
         self.assertIn(query_dict, self.service.queries.values())
 
@@ -168,8 +170,9 @@ class TestClientManager(MockedServiceStreamTestCase):
         self.assertIn(query_dict, self.service.queries.values())
         self.assertNotIn(query_dict2, self.service.queries.values())
 
+    @patch('client_manager.service.ClientManager.update_bufferstreams_from_del_query')
     @patch('client_manager.service.ClientManager.create_query_id')
-    def test_del_query_should_properly_remove_query_into_datastructure(self, mocked_query_id):
+    def test_del_query_should_properly_remove_query_into_datastructure(self, mocked_query_id, mocked_buffer):
         subscriber_id = 'sub1'
         query_name = 'some query'
         query_id = 123
@@ -183,6 +186,7 @@ class TestClientManager(MockedServiceStreamTestCase):
         self.service.del_query_action(subscriber_id, query_name=query_name)
 
         mocked_query_id.assert_called_once_with(subscriber_id, query_name)
+        mocked_buffer.assert_called_once_with(query_id)
         self.assertNotIn(123, self.service.queries.keys())
         self.assertNotIn(query_dict, self.service.queries.values())
 
@@ -274,7 +278,6 @@ class TestClientManager(MockedServiceStreamTestCase):
         }
 
         self.service.update_bufferstreams_from_new_query(query)
-        mocked_unique_buff.assert_called_once_with('pub1', '300x300', '30')
         self.assertIn(bufferstream_key, self.service.buffer_hash_to_query_map)
         self.assertEqual(self.service.buffer_hash_to_query_map[bufferstream_key], set({query_id}))
 
@@ -299,3 +302,33 @@ class TestClientManager(MockedServiceStreamTestCase):
         self.service.update_bufferstreams_from_new_query(query)
         self.assertFalse(mocked_unique_buff.called)
         self.assertNotIn(bufferstream_key, self.service.buffer_hash_to_query_map)
+
+    # @patch('namespace_mapper.service.NamespaceMapper.get_unique_buffer_hash', return_value='unique-buffer-key')
+    # @patch('namespace_mapper.service.NamespaceMapper.send_stop_preprocessor_action')
+    # @patch('namespace_mapper.service.NamespaceMapper.send_del_buffer_stream_key_to_event_dispatcher')
+    def test_update_bufferstreams_from_del_query_should_update_bufferstreams(self):
+            # self, mocked_send_del, mocked_stop_preprocessor, mocked_unique_buffer):
+        query_id = '123'
+        bufferstream_key = 'bufferstream-key'
+        self.service.buffer_hash_to_query_map = {bufferstream_key: set({query_id})}
+
+        self.service.update_bufferstreams_from_del_query(query_id)
+        self.assertDictEqual(
+            self.service.buffer_hash_to_query_map,
+            {}
+        )
+
+    # @patch('namespace_mapper.service.NamespaceMapper.get_unique_buffer_hash', return_value='unique-buffer-key')
+    # @patch('namespace_mapper.service.NamespaceMapper.send_stop_preprocessor_action')
+    # @patch('namespace_mapper.service.NamespaceMapper.send_del_buffer_stream_key_to_event_dispatcher')
+    def test_update_bufferstreams_from_del_query_shouldn_remove_bufferstream_if_not_empty(self):
+            # self, mocked_send_del, mocked_stop_preprocessor, mocked_unique_buffer):
+        query_id = '123'
+        bufferstream_key = 'bufferstream-key'
+        self.service.buffer_hash_to_query_map = {bufferstream_key: set({query_id, 'query_2'})}
+
+        self.service.update_bufferstreams_from_del_query(query_id)
+        self.assertDictEqual(
+            self.service.buffer_hash_to_query_map,
+            {bufferstream_key: set({'query_2'})}
+        )

@@ -73,10 +73,23 @@ class ClientManager(BaseTracerService):
         query_id = query['id']
         buffer_query_set.add(query_id)
         if query_set_was_empty:
-            pass
             # self.send_start_preprocessor_action(
             #     publisher_id, source, resolution, fps, list(buffer_query_set), buffer_hash)
             # self.send_add_buffer_stream_key_to_event_dispatcher(publisher_id, buffer_hash)
+            pass
+
+    def update_bufferstreams_from_del_query(self, query_id):
+        buffer_to_remove = None
+        for buffer_hash, query_set in self.buffer_hash_to_query_map.items():
+            if query_id in query_set:
+                query_set.remove(query_id)
+                if len(query_set) == 0:
+                    buffer_to_remove = buffer_hash
+                    break
+        if buffer_to_remove:
+            del self.buffer_hash_to_query_map[buffer_to_remove]
+            # self.send_stop_preprocessor_action(buffer_to_remove)
+            # self.send_del_buffer_stream_key_to_event_dispatcher(buffer_hash)
 
     def add_query_action(self, subscriber_id, query_text):
         query = self.create_query_dict(subscriber_id, query_text)
@@ -92,6 +105,8 @@ class ClientManager(BaseTracerService):
         query = self.queries.pop(query_id, None)
         if query is None:
             self.logger.info('Ignoring removal of non-existing query')
+        else:
+            self.update_bufferstreams_from_del_query(query_id)
 
     def pub_join_action(self, publisher_id, source, meta):
         if publisher_id not in self.publishers.keys():
