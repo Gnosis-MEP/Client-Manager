@@ -63,7 +63,7 @@ class TestClientManager(MockedServiceStreamTestCase):
         json_msg = prepare_event_msg_tuple(event_data)[1]
         self.service.process_action(action, event_data, json_msg)
         # self.service.add_query_action.assert_called_once_with(action=action, event_data=event_data, json_msg=json_msg)
-        mocked_add_query.assert_called_once_with(subscriber_id=event_data['subscriber_id'], query=event_data['query'])
+        mocked_add_query.assert_called_once_with(subscriber_id=event_data['subscriber_id'], query_text=event_data['query'])
 
     @patch('client_manager.service.ClientManager.del_query_action')
     def test_process_action_should_call_del_query_with_proper_parameters(self, mocked_del_query):
@@ -120,3 +120,79 @@ class TestClientManager(MockedServiceStreamTestCase):
         mocked_pub_leave.assert_called_once_with(
             publisher_id=event_data['publisher_id'],
         )
+
+    def test_create_query_id_properly_working(self):
+        subscriber_id = 'sub_1'
+        query_name = 'my incredible query'
+        res = self.service.create_query_id(subscriber_id, query_name)
+        expected = '6962607866718b3cbd13556162c95dd9'
+        self.assertEqual(res, expected)
+
+    @patch('client_manager.service.ClientManager.create_query_dict')
+    def test_add_query_should_properly_include_query_into_datastructure(self, mocked_query_dict):
+        subscriber_id = 'sub1'
+        query_id = 123
+        query_dict = {'id': query_id, 'etc': '...'}
+        mocked_query_dict.return_value = query_dict
+        self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+
+        mocked_query_dict.assert_called_once_with(subscriber_id, self.SIMPLE_QUERY_TEXT)
+        self.assertIn(123, self.service.queries.keys())
+        self.assertIn(query_dict, self.service.queries.values())
+
+    @patch('client_manager.service.ClientManager.create_query_dict')
+    def test_add_query_shouldn_include_duplicated_query(self, mocked_query_dict):
+        subscriber_id = 'sub1'
+        query_id = 123
+        query_dict = {'id': query_id, 'etc': '...'}
+        query_dict2 = {'id': query_id, 'other': '...'}
+        mocked_query_dict.return_value = query_dict
+        self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+
+        mocked_query_dict.return_value = query_dict2
+        self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+
+        self.assertIn(123, self.service.queries.keys())
+        self.assertIn(query_dict, self.service.queries.values())
+        self.assertNotIn(query_dict2, self.service.queries.values())
+
+    @patch('client_manager.service.ClientManager.create_query_id')
+    def test_del_query_should_properly_remove_query_into_datastructure(self, mocked_query_id):
+        subscriber_id = 'sub1'
+        query_name = 'some query'
+        query_id = 123
+        query_dict = {'id': query_id, 'etc': '...'}
+        self.service.queries = {
+            query_id: query_dict,
+            456: {'other': '...'}
+        }
+
+        mocked_query_id.return_value = query_id
+        self.service.del_query_action(subscriber_id, query_name=query_name)
+
+        mocked_query_id.assert_called_once_with(subscriber_id, query_name)
+        self.assertNotIn(123, self.service.queries.keys())
+        self.assertNotIn(query_dict, self.service.queries.values())
+
+        self.assertIn(456, self.service.queries.keys())
+        self.assertIn({'other': '...'}, self.service.queries.values())
+
+    @patch('client_manager.service.ClientManager.create_query_id')
+    def test_del_query_should_ignore_deleting_nonexising_query(self, mocked_query_id):
+        subscriber_id = 'sub1'
+        query_name = 'some query'
+        query_id = 123
+        query_dict = {'id': query_id, 'etc': '...'}
+        self.service.queries = {
+            456: {'other': '...'}
+        }
+
+        mocked_query_id.return_value = query_id
+        self.service.del_query_action(subscriber_id, query_name=query_name)
+
+        mocked_query_id.assert_called_once_with(subscriber_id, query_name)
+        self.assertNotIn(123, self.service.queries.keys())
+        self.assertNotIn(query_dict, self.service.queries.values())
+
+        self.assertIn(456, self.service.queries.keys())
+        self.assertIn({'other': '...'}, self.service.queries.values())

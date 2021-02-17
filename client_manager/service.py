@@ -1,3 +1,4 @@
+import hashlib
 import threading
 
 from event_service_utils.logging.decorators import timer_logger
@@ -23,6 +24,12 @@ class ClientManager(BaseTracerService):
         self.cmd_validation_fields = ['id', 'action']
         self.data_validation_fields = ['id']
 
+        self.query_parser = lambda query_text: {'name': 'query'}
+
+        self.subscribers = {}
+        self.queries = {}
+        self.publishers = {}
+
     # def send_event_to_somewhere(self, event_data):
     #     self.logger.debug(f'Sending event to somewhere: {event_data}')
     #     self.write_event_with_trace(event_data, self.somewhere_stream)
@@ -34,11 +41,31 @@ class ClientManager(BaseTracerService):
         # do something here
         pass
 
-    def add_query_action(self, subscriber_id, query):
-        pass
+    def create_query_id(self, subscriber_id, query_name):
+        key = f'{subscriber_id}_{query_name}'
+        query_id = hashlib.md5(key.encode('utf-8')).hexdigest()
+        return query_id
+
+    def create_query_dict(self, subscriber_id, query_text):
+        query = self.query_parser(query_text)
+        query_id = self.create_query_id(subscriber_id, query['name'])
+        query['id'] = query_id
+        query['subscriber_id'] = subscriber_id
+        return query
+
+    def add_query_action(self, subscriber_id, query_text):
+        query = self.create_query_dict(subscriber_id, query_text)
+        if query['id'] not in self.queries.keys():
+            self.queries[query['id']] = query
+        else:
+            self.logger.info('Ignoring duplicated query addition')
 
     def del_query_action(self, subscriber_id, query_name):
-        pass
+        query_id = self.create_query_id(subscriber_id, query_name)
+
+        query = self.queries.pop(query_id, None)
+        if query is None:
+            self.logger.info('Ignoring removal of non-existing query')
 
     def pub_join_action(self, publisher_id, source, meta):
         pass
@@ -52,7 +79,7 @@ class ClientManager(BaseTracerService):
         if action == 'addQuery':
             self.add_query_action(
                 subscriber_id=event_data['subscriber_id'],
-                query=event_data['query']
+                query_text=event_data['query']
             )
         elif action == 'delQuery':
             self.del_query_action(
@@ -72,7 +99,9 @@ class ClientManager(BaseTracerService):
 
     def log_state(self):
         super(ClientManager, self).log_state()
-        self.logger.info(f'My service name is: {self.name}')
+        self._log_dict('Subscribers', self.queries)
+        self._log_dict('Queries', self.queries)
+        self._log_dict('Publishers', self.queries)
 
     def run(self):
         super(ClientManager, self).run()
