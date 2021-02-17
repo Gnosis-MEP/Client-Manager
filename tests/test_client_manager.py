@@ -29,11 +29,11 @@ class TestClientManager(MockedServiceStreamTestCase):
     REGISTER QUERY my_first_query
     OUTPUT K_GRAPH_JSON
     CONTENT ObjectDetection, ColorDetection
-    MATCH (c1:Car {color:'blue'} AND c2:Car {color:'white', })
-    FROM *
+    MATCH (c1:Car {color:'blue'}) AND (c2:Car {color:'white'})
+    FROM teste
     WITHIN TUMBLING_COUNT_WINDOW(2)
     RETURN *
-    """
+    """.strip()
 
     @patch('client_manager.service.ClientManager.process_action')
     def test_process_cmd_should_call_process_action(self, mocked_process_action):
@@ -226,3 +226,19 @@ class TestClientManager(MockedServiceStreamTestCase):
 
         self.assertNotIn(publisher_id, self.service.publishers.keys())
         self.assertNotIn(publisher, self.service.publishers.values())
+
+    @patch('client_manager.service.ClientManager.create_query_id')
+    def test_create_query_dict_parses_query_and_return_proper_dict(self, mocked_query_id):
+        subscriber_id = 'sub_1'
+        query_id = '123'
+        expected_query_name = 'my_first_query'
+        mocked_query_id.return_value = query_id
+        query = self.service.create_query_dict(subscriber_id, self.SIMPLE_QUERY_TEXT)
+        mocked_query_id.assert_called_once_with(subscriber_id, expected_query_name)
+        self.assertIn('subscriber_id', query.keys())
+        self.assertIn('id', query.keys())
+        self.assertIn('name', query.keys())
+
+        self.assertEqual(query['id'], query_id)
+        self.assertEqual(query['subscriber_id'], subscriber_id)
+        self.assertEqual(query['name'], expected_query_name)

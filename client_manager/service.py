@@ -4,6 +4,7 @@ import threading
 from event_service_utils.logging.decorators import timer_logger
 from event_service_utils.services.tracer import BaseTracerService
 from event_service_utils.tracing.jaeger import init_tracer
+from gnosis_epl.main import QueryParser
 
 
 class ClientManager(BaseTracerService):
@@ -24,7 +25,7 @@ class ClientManager(BaseTracerService):
         self.cmd_validation_fields = ['id', 'action']
         self.data_validation_fields = ['id']
 
-        self.query_parser = lambda query_text: {'name': 'query'}
+        self.query_parser = QueryParser()
 
         self.subscribers = {}
         self.queries = {}
@@ -47,7 +48,7 @@ class ClientManager(BaseTracerService):
         return query_id
 
     def create_query_dict(self, subscriber_id, query_text):
-        query = self.query_parser(query_text)
+        query = self.query_parser.parse(query_text)
         query_id = self.create_query_id(subscriber_id, query['name'])
         query['id'] = query_id
         query['subscriber_id'] = subscriber_id
