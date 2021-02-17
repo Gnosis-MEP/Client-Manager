@@ -68,10 +68,19 @@ class ClientManager(BaseTracerService):
             self.logger.info('Ignoring removal of non-existing query')
 
     def pub_join_action(self, publisher_id, source, meta):
-        pass
+        if publisher_id not in self.publishers.keys():
+            self.publishers[publisher_id] = {
+                'id': publisher_id,
+                'source': source,
+                'meta': meta,
+            }
+        else:
+            self.logger.info('Ignoring duplicated publisher incluson')
 
     def pub_leave_action(self, publisher_id):
-        pass
+        publisher = self.publishers.pop(publisher_id, None)
+        if publisher is None:
+            self.logger.info('Ignoring removal of non-existing publisher')
 
     def process_action(self, action, event_data, json_msg):
         if not super(ClientManager, self).process_action(action, event_data, json_msg):

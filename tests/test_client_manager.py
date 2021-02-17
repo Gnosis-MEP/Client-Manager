@@ -196,3 +196,33 @@ class TestClientManager(MockedServiceStreamTestCase):
 
         self.assertIn(456, self.service.queries.keys())
         self.assertIn({'other': '...'}, self.service.queries.values())
+
+    def test_pub_join_should_properly_include_publisher_into_datastructure(self):
+
+        publisher_id = 'pub1'
+        source = 'http://etc.com',
+        meta = {'fps': 30}
+        publisher = {
+            'id': publisher_id,
+            'source': source,
+            'meta': meta
+        }
+        self.service.pub_join_action(publisher_id, source, meta)
+
+        self.assertIn(publisher_id, self.service.publishers.keys())
+        self.assertIn(publisher, self.service.publishers.values())
+
+    def test_pub_leave_should_properly_remove_publisher_into_datastructure(self):
+        publisher_id = 'pub1'
+        source = 'http://etc.com',
+        meta = {'fps': 30}
+        publisher = {
+            'id': publisher_id,
+            'source': source,
+            'meta': meta
+        }
+        self.service.pub_join_action(publisher_id, source, meta)
+        self.service.pub_leave_action(publisher_id)
+
+        self.assertNotIn(publisher_id, self.service.publishers.keys())
+        self.assertNotIn(publisher, self.service.publishers.values())
