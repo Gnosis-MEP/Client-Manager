@@ -10,6 +10,7 @@ variables:
   SERVICE_CMD_KEY: cm-cmd
   PREPROCESSOR_CMD_KEY: pp-cmd
   EVENT_DISPATCHER_CMD_KEY: ed-cmd
+  ADAPTATION_MONITOR_CMD_KEY: adpm-cmd
   LOGGING_LEVEL: DEBUG
   DOCKER_HOST: tcp://docker:2375/
   DOCKER_DRIVER: overlay2

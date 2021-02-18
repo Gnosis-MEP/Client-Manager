@@ -19,4 +19,21 @@ EVENT_DISPATCHER_CMD_KEY = config('EVENT_DISPATCHER_CMD_KEY')
 ADAPTATION_MONITOR_CMD_KEY = config('ADAPTATION_MONITOR_CMD_KEY')
 
 
+def string_to_dict_cast(str_value):
+    if str_value == "":
+        return {}
+    final_dict = {}
+    for service_str in str_value.split(';'):
+        service_type, content_type_str_list = service_str.split(':')
+        final_dict[service_type] = {
+            'content_type': content_type_str_list.split(',')
+        }
+    return final_dict
+
+
+_DEFAULT_MOCKED_STR = "ObjectDetection:Person,Car;ColorDetection:ObjectColor"
+
+MOCKED_SERVICE_REGISTRY = config('MOCKED_SERVICE_REGISTRY', cast=string_to_dict_cast,
+                                 default=_DEFAULT_MOCKED_STR)
+
 LOGGING_LEVEL = config('LOGGING_LEVEL', default='DEBUG')

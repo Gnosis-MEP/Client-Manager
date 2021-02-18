@@ -22,6 +22,7 @@ class TestClientManager(MockedServiceStreamTestCase):
         'preprocessor_cmd_key': PREPROCESSOR_CMD_KEY,
         'event_dispatcher_cmd_key': EVENT_DISPATCHER_CMD_KEY,
         'adaptation_planner_cmd_key': ADAPTATION_MONITOR_CMD_KEY,
+        'mocked_registry': lambda x: (),
         'logging_level': 'ERROR',
         'tracer_configs': {'reporting_host': None, 'reporting_port': None},
     }

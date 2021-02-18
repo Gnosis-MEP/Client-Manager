@@ -14,6 +14,7 @@ class ClientManager(BaseTracerService):
                  preprocessor_cmd_key,
                  event_dispatcher_cmd_key,
                  adaptation_planner_cmd_key,
+                 mocked_registry,
                  logging_level,
                  tracer_configs):
         tracer = init_tracer(self.__class__.__name__, **tracer_configs)
@@ -39,6 +40,8 @@ class ClientManager(BaseTracerService):
         self.queries = {}
         self.buffer_hash_to_query_map = {}
         self.publishers = {}
+
+        self.mocked_registry = mocked_registry
 
     def send_start_preprocessor_action(self, publisher_id, source, resolution, fps, query_ids, buffer_stream_key):
         new_event_data = {
