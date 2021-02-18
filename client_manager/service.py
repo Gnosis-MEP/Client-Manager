@@ -96,7 +96,9 @@ class ClientManager(BaseTracerService):
             'query_id': query['id'],
             'publisher_id': publisher_id,
         }
-        return new_event_data
+
+        self.logger.info(f'Sending "updateControlFlow" action: {new_event_data}')
+        self.write_event_with_trace(new_event_data, self.adaptation_planner_cmd)
 
     def get_unique_buffer_hash(self, publisher_id, resolution, fps):
         unhashed_key = '-'.join([publisher_id, resolution, fps])

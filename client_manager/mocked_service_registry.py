@@ -5,8 +5,10 @@ class MockedRegistry():
 
     def get_service_function_chain_by_content_type_list(self, content_types):
         service_type_list = []
-        for service_type, service_data in self.available_services.items():
-            if any([ct in service_data['content_type'] for ct in content_types]):
-                service_type_list.append(service_type)
+        for ct in content_types:
+            for service_type, service_data in self.available_services.items():
+                if ct in service_data['content_type']:
+                    service_type_list.append(service_type)
+                    break
 
         return service_type_list
