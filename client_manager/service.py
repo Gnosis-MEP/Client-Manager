@@ -40,9 +40,47 @@ class ClientManager(BaseTracerService):
         self.buffer_hash_to_query_map = {}
         self.publishers = {}
 
-    # def send_event_to_somewhere(self, event_data):
-    #     self.logger.debug(f'Sending event to somewhere: {event_data}')
-    #     self.write_event_with_trace(event_data, self.somewhere_stream)
+    def send_start_preprocessor_action(self, publisher_id, source, resolution, fps, query_ids, buffer_stream_key):
+        new_event_data = {
+            'id': self.service_based_random_event_id(),
+            'action': 'startPreprocessing',
+            'publisher_id': publisher_id,
+            'source': source,
+            'resolution': resolution,
+            'fps': fps,
+            'buffer_stream_key': buffer_stream_key,
+            'query_ids': query_ids
+        }
+        self.logger.info(f'Sending "startPreprocessing" action: {new_event_data}')
+        self.write_event_with_trace(new_event_data, self.preprocessor_cmd)
+
+    def send_stop_preprocessor_action(self, buffer_stream_key):
+        new_event_data = {
+            'id': self.service_based_random_event_id(),
+            'action': 'stopPreprocessing',
+            'buffer_stream_key': buffer_stream_key
+        }
+        self.logger.info(f'Sending "stopPreprocessing" action: {new_event_data}')
+        self.write_event_with_trace(new_event_data, self.preprocessor_cmd)
+
+    def send_add_buffer_stream_key_to_event_dispatcher(self, publisher_id, buffer_stream_key):
+        new_event_data = {
+            'id': self.service_based_random_event_id(),
+            'action': 'addBufferStreamKey',
+            'publisher_id': publisher_id,
+            'buffer_stream_key': buffer_stream_key
+        }
+        self.logger.info(f'Sending "addBufferStreamKey" action: {new_event_data}')
+        self.write_event_with_trace(new_event_data, self.event_dispatcher_cmd)
+
+    def send_del_buffer_stream_key_to_event_dispatcher(self, buffer_stream_key):
+        new_event_data = {
+            'id': self.service_based_random_event_id(),
+            'action': 'delBufferStreamKey',
+            'buffer_stream_key': buffer_stream_key
+        }
+        self.logger.info(f'Sending "delBufferStreamKey" action: {new_event_data}')
+        self.write_event_with_trace(new_event_data, self.event_dispatcher_cmd)
 
     @timer_logger
     def process_data_event(self, event_data, json_msg):
@@ -74,18 +112,20 @@ class ClientManager(BaseTracerService):
         if publisher is None:
             self.logger.info(f'Publisher id {publisher_id} not available. Will not process Query {query}')
             return
+        source = publisher['source']
+        resolution = publisher['meta']['resolution']
+        fps = publisher['meta']['fps']
         buffer_hash = self.get_unique_buffer_hash(
-            publisher_id, publisher['meta']['resolution'], publisher['meta']['fps']
+            publisher_id, resolution, fps
         )
         buffer_query_set = self.buffer_hash_to_query_map.setdefault(buffer_hash, set())
         query_set_was_empty = len(buffer_query_set) == 0
         query_id = query['id']
         buffer_query_set.add(query_id)
         if query_set_was_empty:
-            # self.send_start_preprocessor_action(
-            #     publisher_id, source, resolution, fps, list(buffer_query_set), buffer_hash)
-            # self.send_add_buffer_stream_key_to_event_dispatcher(publisher_id, buffer_hash)
-            pass
+            self.send_start_preprocessor_action(
+                publisher_id, source, resolution, fps, list(buffer_query_set), buffer_hash)
+            self.send_add_buffer_stream_key_to_event_dispatcher(publisher_id, buffer_hash)
 
     def update_bufferstreams_from_del_query(self, query_id):
         buffer_to_remove = None
@@ -97,8 +137,8 @@ class ClientManager(BaseTracerService):
                     break
         if buffer_to_remove:
             del self.buffer_hash_to_query_map[buffer_to_remove]
-            # self.send_stop_preprocessor_action(buffer_to_remove)
-            # self.send_del_buffer_stream_key_to_event_dispatcher(buffer_hash)
+            self.send_stop_preprocessor_action(buffer_to_remove)
+            self.send_del_buffer_stream_key_to_event_dispatcher(buffer_to_remove)
 
     def add_query_action(self, subscriber_id, query_text):
         query = self.create_query_dict(subscriber_id, query_text)
@@ -164,9 +204,4 @@ class ClientManager(BaseTracerService):
 
     def run(self):
         super(ClientManager, self).run()
-        self.cmd_thread = threading.Thread(target=self.run_forever, args=(self.process_cmd,))
-        self.data_thread = threading.Thread(target=self.run_forever, args=(self.process_data,))
-        self.cmd_thread.start()
-        self.data_thread.start()
-        self.cmd_thread.join()
-        self.data_thread.join()
+        self.run_forever(self.process_cmd)

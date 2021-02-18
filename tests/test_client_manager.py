@@ -265,8 +265,11 @@ class TestClientManager(MockedServiceStreamTestCase):
         self.assertEqual(query['subscriber_id'], subscriber_id)
         self.assertEqual(query['name'], expected_query_name)
 
+    @patch('client_manager.service.ClientManager.send_start_preprocessor_action')
+    @patch('client_manager.service.ClientManager.send_add_buffer_stream_key_to_event_dispatcher')
     @patch('client_manager.service.ClientManager.get_unique_buffer_hash')
-    def test_update_bufferstreams_from_new_query_should_update_bufferstreams(self, mocked_unique_buff):
+    def test_update_bufferstreams_from_new_query_should_update_bufferstreams(
+            self, mocked_unique_buff, mocked_send_b, mocked_send_p):
         query_id = '123'
         bufferstream_key = 'bufferstream-key'
         mocked_unique_buff.return_value = bufferstream_key
@@ -275,7 +278,8 @@ class TestClientManager(MockedServiceStreamTestCase):
                 'meta': {
                     'fps': '30',
                     'resolution': '300x300',
-                }
+                },
+                'source': 'abc',
             }
         }
         query = {
@@ -284,11 +288,16 @@ class TestClientManager(MockedServiceStreamTestCase):
         }
 
         self.service.update_bufferstreams_from_new_query(query)
+        mocked_send_b.assert_called_once_with('pub1', bufferstream_key)
+        mocked_send_p.assert_called_once_with('pub1', 'abc', '300x300', '30', ['123'], 'bufferstream-key')
         self.assertIn(bufferstream_key, self.service.buffer_hash_to_query_map)
         self.assertEqual(self.service.buffer_hash_to_query_map[bufferstream_key], set({query_id}))
 
+    @patch('client_manager.service.ClientManager.send_start_preprocessor_action')
+    @patch('client_manager.service.ClientManager.send_add_buffer_stream_key_to_event_dispatcher')
     @patch('client_manager.service.ClientManager.get_unique_buffer_hash')
-    def test_update_bufferstreams_from_new_query_should_not_update_bufferstreams_if_no_pub(self, mocked_unique_buff):
+    def test_update_bufferstreams_from_new_query_should_not_update_bufferstreams_if_no_pub(
+            self, mocked_unique_buff, mocked_send_b, mocked_send_p):
         query_id = '123'
         bufferstream_key = 'bufferstream-key'
         mocked_unique_buff.return_value = bufferstream_key
@@ -306,14 +315,14 @@ class TestClientManager(MockedServiceStreamTestCase):
         }
 
         self.service.update_bufferstreams_from_new_query(query)
+        self.assertFalse(mocked_send_b.called)
+        self.assertFalse(mocked_send_p.called)
         self.assertFalse(mocked_unique_buff.called)
         self.assertNotIn(bufferstream_key, self.service.buffer_hash_to_query_map)
 
-    # @patch('namespace_mapper.service.NamespaceMapper.get_unique_buffer_hash', return_value='unique-buffer-key')
-    # @patch('namespace_mapper.service.NamespaceMapper.send_stop_preprocessor_action')
-    # @patch('namespace_mapper.service.NamespaceMapper.send_del_buffer_stream_key_to_event_dispatcher')
-    def test_update_bufferstreams_from_del_query_should_update_bufferstreams(self):
-            # self, mocked_send_del, mocked_stop_preprocessor, mocked_unique_buffer):
+    @patch('client_manager.service.ClientManager.send_stop_preprocessor_action')
+    @patch('client_manager.service.ClientManager.send_del_buffer_stream_key_to_event_dispatcher')
+    def test_update_bufferstreams_from_del_query_should_update_bufferstreams(self, mocked_send_b, mocked_send_p):
         query_id = '123'
         bufferstream_key = 'bufferstream-key'
         self.service.buffer_hash_to_query_map = {bufferstream_key: set({query_id})}
@@ -323,12 +332,13 @@ class TestClientManager(MockedServiceStreamTestCase):
             self.service.buffer_hash_to_query_map,
             {}
         )
+        mocked_send_b.assert_called_once_with(bufferstream_key)
+        mocked_send_p.assert_called_once_with(bufferstream_key)
 
-    # @patch('namespace_mapper.service.NamespaceMapper.get_unique_buffer_hash', return_value='unique-buffer-key')
-    # @patch('namespace_mapper.service.NamespaceMapper.send_stop_preprocessor_action')
-    # @patch('namespace_mapper.service.NamespaceMapper.send_del_buffer_stream_key_to_event_dispatcher')
-    def test_update_bufferstreams_from_del_query_shouldn_remove_bufferstream_if_not_empty(self):
-            # self, mocked_send_del, mocked_stop_preprocessor, mocked_unique_buffer):
+    @patch('client_manager.service.ClientManager.send_stop_preprocessor_action')
+    @patch('client_manager.service.ClientManager.send_del_buffer_stream_key_to_event_dispatcher')
+    def test_update_bufferstreams_from_del_query_shouldn_remove_bufferstream_if_not_empty(
+            self, mocked_send_b, mocked_send_p):
         query_id = '123'
         bufferstream_key = 'bufferstream-key'
         self.service.buffer_hash_to_query_map = {bufferstream_key: set({query_id, 'query_2'})}
@@ -338,3 +348,6 @@ class TestClientManager(MockedServiceStreamTestCase):
             self.service.buffer_hash_to_query_map,
             {bufferstream_key: set({'query_2'})}
         )
+
+        self.assertFalse(mocked_send_b.called)
+        self.assertFalse(mocked_send_p.called)
