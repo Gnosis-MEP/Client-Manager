@@ -11,6 +11,7 @@ from client_manager.conf import (
     SERVICE_CMD_KEY,
     PREPROCESSOR_CMD_KEY,
     EVENT_DISPATCHER_CMD_KEY,
+    ADAPTATION_MONITOR_CMD_KEY,
 )
 
 
@@ -20,6 +21,7 @@ class TestClientManager(MockedServiceStreamTestCase):
         'service_cmd_key': SERVICE_CMD_KEY,
         'preprocessor_cmd_key': PREPROCESSOR_CMD_KEY,
         'event_dispatcher_cmd_key': EVENT_DISPATCHER_CMD_KEY,
+        'adaptation_planner_cmd_key': ADAPTATION_MONITOR_CMD_KEY,
         'logging_level': 'ERROR',
         'tracer_configs': {'reporting_host': None, 'reporting_port': None},
     }
