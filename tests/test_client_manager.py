@@ -9,6 +9,8 @@ from client_manager.service import ClientManager
 from client_manager.conf import (
     SERVICE_STREAM_KEY,
     SERVICE_CMD_KEY,
+    PREPROCESSOR_CMD_KEY,
+    EVENT_DISPATCHER_CMD_KEY,
 )
 
 
@@ -16,6 +18,8 @@ class TestClientManager(MockedServiceStreamTestCase):
     GLOBAL_SERVICE_CONFIG = {
         'service_stream_key': SERVICE_STREAM_KEY,
         'service_cmd_key': SERVICE_CMD_KEY,
+        'preprocessor_cmd_key': PREPROCESSOR_CMD_KEY,
+        'event_dispatcher_cmd_key': EVENT_DISPATCHER_CMD_KEY,
         'logging_level': 'ERROR',
         'tracer_configs': {'reporting_host': None, 'reporting_port': None},
     }

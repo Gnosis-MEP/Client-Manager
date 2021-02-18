@@ -8,6 +8,8 @@ from client_manager.conf import (
     REDIS_PORT,
     SERVICE_STREAM_KEY,
     SERVICE_CMD_KEY,
+    PREPROCESSOR_CMD_KEY,
+    EVENT_DISPATCHER_CMD_KEY,
     LOGGING_LEVEL,
     TRACER_REPORTING_HOST,
     TRACER_REPORTING_PORT,
@@ -24,6 +26,8 @@ def run_service():
         service_stream_key=SERVICE_STREAM_KEY,
         service_cmd_key=SERVICE_CMD_KEY,
         stream_factory=stream_factory,
+        preprocessor_cmd_key=PREPROCESSOR_CMD_KEY,
+        event_dispatcher_cmd_key=EVENT_DISPATCHER_CMD_KEY,
         logging_level=LOGGING_LEVEL,
         tracer_configs=tracer_configs
     )

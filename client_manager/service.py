@@ -11,6 +11,8 @@ class ClientManager(BaseTracerService):
     def __init__(self,
                  service_stream_key, service_cmd_key,
                  stream_factory,
+                 preprocessor_cmd_key,
+                 event_dispatcher_cmd_key,
                  logging_level,
                  tracer_configs):
         tracer = init_tracer(self.__class__.__name__, **tracer_configs)
@@ -24,6 +26,8 @@ class ClientManager(BaseTracerService):
         )
         self.cmd_validation_fields = ['id', 'action']
         self.data_validation_fields = ['id']
+        self.preprocessor_cmd = self.stream_factory.create(key=preprocessor_cmd_key, stype='streamOnly')
+        self.event_dispatcher_cmd = self.stream_factory.create(key=event_dispatcher_cmd_key, stype='streamOnly')
 
         self.query_parser = QueryParser()
 
