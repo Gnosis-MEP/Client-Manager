@@ -1,10 +1,11 @@
 import json
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from event_service_utils.tests.base_test_case import MockedServiceStreamTestCase
 from event_service_utils.tests.json_msg_helper import prepare_event_msg_tuple
 
 from client_manager.service import ClientManager
+from client_manager.mocked_service_registry import MockedRegistry
 
 from client_manager.conf import (
     SERVICE_STREAM_KEY,
@@ -142,9 +143,14 @@ class TestClientManager(MockedServiceStreamTestCase):
         query_id = 123
         query_dict = {
             'id': query_id,
-            'from': 'test',
+            'from': ['test'],
+            'content': ['ObjectDetection'],
             'etc': '...'
         }
+        self.service.mocked_registry = MagicMock()
+        self.service.mocked_registry.get_service_function_chain_by_content_type_list = MagicMock(
+            return_value=['ObjectDetection'])
+
         mocked_query_dict.return_value = query_dict
         self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
@@ -160,13 +166,19 @@ class TestClientManager(MockedServiceStreamTestCase):
         query_dict = {
             'id': query_id,
             'from': 'test',
+            'content': ['ObjectDetection'],
             'etc': '...'
         }
         query_dict2 = {
             'id': query_id,
             'from': 'test',
+            'content': ['ObjectDetection'],
             'other': '...'
         }
+        self.service.mocked_registry = MagicMock()
+        self.service.mocked_registry.get_service_function_chain_by_content_type_list = MagicMock(
+            return_value=['ObjectDetection'])
+
         mocked_query_dict.return_value = query_dict
         self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 

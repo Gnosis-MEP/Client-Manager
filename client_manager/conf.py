@@ -31,7 +31,7 @@ def string_to_dict_cast(str_value):
     return final_dict
 
 
-_DEFAULT_MOCKED_STR = "ObjectDetection:Person,Car;ColorDetection:ObjectColor"
+_DEFAULT_MOCKED_STR = "ObjectDetection:ObjectDetection,Person,Car;ColorDetection:ObjectColor,ColorDetection"
 
 MOCKED_SERVICE_REGISTRY = config('MOCKED_SERVICE_REGISTRY', cast=string_to_dict_cast,
                                  default=_DEFAULT_MOCKED_STR)

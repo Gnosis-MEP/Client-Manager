@@ -85,12 +85,18 @@ class ClientManager(BaseTracerService):
         self.logger.info(f'Sending "delBufferStreamKey" action: {new_event_data}')
         self.write_event_with_trace(new_event_data, self.event_dispatcher_cmd)
 
-    @timer_logger
-    def process_data_event(self, event_data, json_msg):
-        if not super(ClientManager, self).process_data_event(event_data, json_msg):
-            return False
-        # do something here
-        pass
+    def send_update_controlflow_for_adaptation_monitor(self, query):
+        content_types = query['content']
+        publisher_id = query['from'][0]
+        service_function_chain = self.mocked_registry.get_service_function_chain_by_content_type_list(content_types)
+        new_event_data = {
+            'id': self.service_based_random_event_id(),
+            'action': 'updateControlFlow',
+            'data_flow': service_function_chain,
+            'query_id': query['id'],
+            'publisher_id': publisher_id,
+        }
+        return new_event_data
 
     def get_unique_buffer_hash(self, publisher_id, resolution, fps):
         unhashed_key = '-'.join([publisher_id, resolution, fps])
@@ -147,6 +153,7 @@ class ClientManager(BaseTracerService):
         query = self.create_query_dict(subscriber_id, query_text)
         if query['id'] not in self.queries.keys():
             self.queries[query['id']] = query
+            self.send_update_controlflow_for_adaptation_monitor(query=query)
             self.update_bufferstreams_from_new_query(query=query)
         else:
             self.logger.info('Ignoring duplicated query addition')
