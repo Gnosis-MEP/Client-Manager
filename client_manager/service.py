@@ -14,6 +14,7 @@ class ClientManager(BaseTracerService):
                  preprocessor_cmd_key,
                  event_dispatcher_cmd_key,
                  adaptation_planner_cmd_key,
+                 window_manager_cmd_key,
                  mocked_registry,
                  logging_level,
                  tracer_configs):
@@ -33,7 +34,7 @@ class ClientManager(BaseTracerService):
         self.adaptation_planner_cmd = self.stream_factory.create(key=adaptation_planner_cmd_key, stype='streamOnly')
         # self.matcher_cmd = self.stream_factory.create(key=matcher_cmd_key, stype='streamOnly')
         # self.forwarder_cmd = self.stream_factory.create(key=forwarder_cmd_key, stype='streamOnly')
-        # self.window_manager_cmd = self.stream_factory.create(key=window_manager_cmd_key, stype='streamOnly')
+        self.window_manager_cmd = self.stream_factory.create(key=window_manager_cmd_key, stype='streamOnly')
 
         self.query_parser = QueryParser()
 
@@ -140,6 +141,17 @@ class ClientManager(BaseTracerService):
                 publisher_id, source, resolution, fps, list(buffer_query_set), buffer_hash)
             self.send_add_buffer_stream_key_to_event_dispatcher(publisher_id, buffer_hash)
 
+    def send_query_window_for_window_manager(self, query):
+        new_event_data = {
+            'id': self.service_based_random_event_id(),
+            'action': 'addQueryWindow',
+            'query_id': query['id'],
+            'window': query['window'],
+        }
+
+        self.logger.info(f'Sending "addQueryWindow" action: {new_event_data}')
+        self.write_event_with_trace(new_event_data, self.window_manager_cmd)
+
     def update_bufferstreams_from_del_query(self, query_id):
         buffer_to_remove = None
         for buffer_hash, query_set in self.buffer_hash_to_query_map.items():
@@ -158,6 +170,7 @@ class ClientManager(BaseTracerService):
         if query['id'] not in self.queries.keys():
             self.queries[query['id']] = query
             self.send_update_controlflow_for_adaptation_monitor(query=query)
+            self.send_query_window_for_window_manager(query=query)
             self.update_bufferstreams_from_new_query(query=query)
         else:
             self.logger.info('Ignoring duplicated query addition')

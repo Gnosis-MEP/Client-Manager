@@ -11,6 +11,7 @@ from client_manager.conf import (
     PREPROCESSOR_CMD_KEY,
     EVENT_DISPATCHER_CMD_KEY,
     ADAPTATION_MONITOR_CMD_KEY,
+    WINDOW_MANAGER_CMD_KEY,
 )
 
 
@@ -21,6 +22,7 @@ class TestClientManager(MockedServiceStreamTestCase):
         'preprocessor_cmd_key': PREPROCESSOR_CMD_KEY,
         'event_dispatcher_cmd_key': EVENT_DISPATCHER_CMD_KEY,
         'adaptation_planner_cmd_key': ADAPTATION_MONITOR_CMD_KEY,
+        'window_manager_cmd_key': WINDOW_MANAGER_CMD_KEY,
         'mocked_registry': lambda x: (),
         'logging_level': 'ERROR',
         'tracer_configs': {'reporting_host': None, 'reporting_port': None},
@@ -134,9 +136,11 @@ class TestClientManager(MockedServiceStreamTestCase):
         expected = '6962607866718b3cbd13556162c95dd9'
         self.assertEqual(res, expected)
 
+    @patch('client_manager.service.ClientManager.send_query_window_for_window_manager')
     @patch('client_manager.service.ClientManager.update_bufferstreams_from_new_query')
     @patch('client_manager.service.ClientManager.create_query_dict')
-    def test_add_query_should_properly_include_query_into_datastructure(self, mocked_query_dict, mocked_buffer):
+    def test_add_query_should_properly_include_query_into_datastructure(
+            self, mocked_query_dict, mocked_buffer, mocked_send_window):
         subscriber_id = 'sub1'
         query_id = 123
         query_dict = {
@@ -154,6 +158,7 @@ class TestClientManager(MockedServiceStreamTestCase):
 
         mocked_query_dict.assert_called_once_with(subscriber_id, self.SIMPLE_QUERY_TEXT)
         mocked_buffer.assert_called_once_with(query=query_dict)
+        mocked_send_window.assert_called_once_with(query=query_dict)
         self.assertIn(123, self.service.queries.keys())
         self.assertIn(query_dict, self.service.queries.values())
 
@@ -165,12 +170,14 @@ class TestClientManager(MockedServiceStreamTestCase):
             'id': query_id,
             'from': 'test',
             'content': ['ObjectDetection'],
+            'window': 'window',
             'etc': '...'
         }
         query_dict2 = {
             'id': query_id,
             'from': 'test',
             'content': ['ObjectDetection'],
+            'window': 'window',
             'other': '...'
         }
         self.service.mocked_registry = MagicMock()
@@ -372,3 +379,28 @@ class TestClientManager(MockedServiceStreamTestCase):
 
         self.assertFalse(mocked_send_b.called)
         self.assertFalse(mocked_send_p.called)
+
+    @patch('client_manager.service.ClientManager.service_based_random_event_id')
+    @patch('client_manager.service.ClientManager.write_event_with_trace')
+    def test_send_query_window_for_window_manager(self, mocked_write_event, mocked_rand_id):
+        mocked_rand_id.return_value = 123
+        query_id = '123'
+        query = {
+            'id': query_id,
+            'from': ['pub1'],
+            'content': ['ObjectDetection', 'ColorDetection'],
+            'window': {
+                'window_type': 'TUMBLING_COUNT_WINDOW',
+                'args': [2]
+            }
+        }
+        self.service.send_query_window_for_window_manager(query=query)
+        mocked_write_event.assert_called_once_with(
+            {
+                'id': 123,
+                'action': 'addQueryWindow',
+                'window': query['window'],
+                'query_id': query_id
+            },
+            self.service.window_manager_cmd
+        )

@@ -12,6 +12,7 @@ from client_manager.conf import (
     PREPROCESSOR_CMD_KEY,
     EVENT_DISPATCHER_CMD_KEY,
     ADAPTATION_MONITOR_CMD_KEY,
+    WINDOW_MANAGER_CMD_KEY,
     LOGGING_LEVEL,
     TRACER_REPORTING_HOST,
     TRACER_REPORTING_PORT,
@@ -34,6 +35,7 @@ def run_service():
         preprocessor_cmd_key=PREPROCESSOR_CMD_KEY,
         event_dispatcher_cmd_key=EVENT_DISPATCHER_CMD_KEY,
         adaptation_planner_cmd_key=ADAPTATION_MONITOR_CMD_KEY,
+        window_manager_cmd_key=WINDOW_MANAGER_CMD_KEY,
         mocked_registry=mocked_registry,
         logging_level=LOGGING_LEVEL,
         tracer_configs=tracer_configs
