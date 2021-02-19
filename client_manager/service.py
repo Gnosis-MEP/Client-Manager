@@ -100,8 +100,9 @@ class ClientManager(BaseTracerService):
         self.logger.info(f'Sending "updateControlFlow" action: {new_event_data}')
         self.write_event_with_trace(new_event_data, self.adaptation_planner_cmd)
 
-    def get_unique_buffer_hash(self, publisher_id, resolution, fps):
-        unhashed_key = '-'.join([publisher_id, resolution, fps])
+    def get_unique_buffer_hash(self, query_content, publisher_id, resolution, fps):
+        keys_list = tuple(query_content) + tuple([publisher_id, resolution, fps])
+        unhashed_key = '-'.join(keys_list)
         hash_key = hashlib.md5(unhashed_key.encode())
         return hash_key.hexdigest()
 
@@ -126,8 +127,9 @@ class ClientManager(BaseTracerService):
         source = publisher['source']
         resolution = publisher['meta']['resolution']
         fps = publisher['meta']['fps']
+        query_content = query['content']
         buffer_hash = self.get_unique_buffer_hash(
-            publisher_id, resolution, fps
+            query_content, publisher_id, resolution, fps
         )
         buffer_query_set = self.buffer_hash_to_query_map.setdefault(buffer_hash, set())
         query_set_was_empty = len(buffer_query_set) == 0

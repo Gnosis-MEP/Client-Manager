@@ -276,6 +276,15 @@ class TestClientManager(MockedServiceStreamTestCase):
         self.assertEqual(query['subscriber_id'], subscriber_id)
         self.assertEqual(query['name'], expected_query_name)
 
+    def test_get_unique_buffer_hash(self):
+        query_content = ['abc', 'dfg']
+        publisher_id = 'pub_id1'
+        resolution = "300x900"
+        fps = "100"
+        bufferstream_key = self.service.get_unique_buffer_hash(query_content, publisher_id, resolution, fps)
+        excepted_key = '7a8cde7a97f51f561cda88d38df63caa'
+        self.assertEqual(bufferstream_key, excepted_key)
+
     @patch('client_manager.service.ClientManager.send_start_preprocessor_action')
     @patch('client_manager.service.ClientManager.send_add_buffer_stream_key_to_event_dispatcher')
     @patch('client_manager.service.ClientManager.get_unique_buffer_hash')
@@ -295,7 +304,8 @@ class TestClientManager(MockedServiceStreamTestCase):
         }
         query = {
             'id': query_id,
-            'from': ['pub1']
+            'from': ['pub1'],
+            'content': ['ObjectDetection', 'ColorDetection']
         }
 
         self.service.update_bufferstreams_from_new_query(query)
