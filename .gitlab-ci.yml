@@ -12,6 +12,7 @@ variables:
   EVENT_DISPATCHER_CMD_KEY: ed-cmd
   ADAPTATION_MONITOR_CMD_KEY: adpm-cmd
   WINDOW_MANAGER_CMD_KEY: wm-cmd
+  MATCHER_CMD_KEY: ma-cmd
   LOGGING_LEVEL: DEBUG
   DOCKER_HOST: tcp://docker:2375/
   DOCKER_DRIVER: overlay2

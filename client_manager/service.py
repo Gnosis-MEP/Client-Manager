@@ -15,6 +15,7 @@ class ClientManager(BaseTracerService):
                  event_dispatcher_cmd_key,
                  adaptation_planner_cmd_key,
                  window_manager_cmd_key,
+                 matcher_cmd_key,
                  mocked_registry,
                  logging_level,
                  tracer_configs):
@@ -32,7 +33,7 @@ class ClientManager(BaseTracerService):
         self.preprocessor_cmd = self.stream_factory.create(key=preprocessor_cmd_key, stype='streamOnly')
         self.event_dispatcher_cmd = self.stream_factory.create(key=event_dispatcher_cmd_key, stype='streamOnly')
         self.adaptation_planner_cmd = self.stream_factory.create(key=adaptation_planner_cmd_key, stype='streamOnly')
-        # self.matcher_cmd = self.stream_factory.create(key=matcher_cmd_key, stype='streamOnly')
+        self.matcher_cmd = self.stream_factory.create(key=matcher_cmd_key, stype='streamOnly')
         # self.forwarder_cmd = self.stream_factory.create(key=forwarder_cmd_key, stype='streamOnly')
         self.window_manager_cmd = self.stream_factory.create(key=window_manager_cmd_key, stype='streamOnly')
 
@@ -141,6 +142,20 @@ class ClientManager(BaseTracerService):
                 publisher_id, source, resolution, fps, list(buffer_query_set), buffer_hash)
             self.send_add_buffer_stream_key_to_event_dispatcher(publisher_id, buffer_hash)
 
+    def send_query_matching_for_matcher(self, query):
+        new_event_data = {
+            'id': self.service_based_random_event_id(),
+            'action': 'addQueryMatching',
+            'query_id': query['id'],
+            'match': query['match'],
+            'optional_match': query.get('optional_match', ''),
+            'where': query.get('where', ''),
+            'ret': query['ret'],
+        }
+
+        self.logger.info(f'Sending "addQueryMatching" action: {new_event_data}')
+        self.write_event_with_trace(new_event_data, self.matcher_cmd)
+
     def send_query_window_for_window_manager(self, query):
         new_event_data = {
             'id': self.service_based_random_event_id(),
@@ -170,6 +185,7 @@ class ClientManager(BaseTracerService):
         if query['id'] not in self.queries.keys():
             self.queries[query['id']] = query
             self.send_update_controlflow_for_adaptation_monitor(query=query)
+            self.send_query_matching_for_matcher(query=query)
             self.send_query_window_for_window_manager(query=query)
             self.update_bufferstreams_from_new_query(query=query)
         else:

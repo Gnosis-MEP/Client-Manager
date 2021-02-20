@@ -12,6 +12,7 @@ from client_manager.conf import (
     EVENT_DISPATCHER_CMD_KEY,
     ADAPTATION_MONITOR_CMD_KEY,
     WINDOW_MANAGER_CMD_KEY,
+    MATCHER_CMD_KEY,
 )
 
 
@@ -23,6 +24,7 @@ class TestClientManager(MockedServiceStreamTestCase):
         'event_dispatcher_cmd_key': EVENT_DISPATCHER_CMD_KEY,
         'adaptation_planner_cmd_key': ADAPTATION_MONITOR_CMD_KEY,
         'window_manager_cmd_key': WINDOW_MANAGER_CMD_KEY,
+        'matcher_cmd_key': MATCHER_CMD_KEY,
         'mocked_registry': lambda x: (),
         'logging_level': 'ERROR',
         'tracer_configs': {'reporting_host': None, 'reporting_port': None},
@@ -136,11 +138,12 @@ class TestClientManager(MockedServiceStreamTestCase):
         expected = '6962607866718b3cbd13556162c95dd9'
         self.assertEqual(res, expected)
 
+    @patch('client_manager.service.ClientManager.send_query_matching_for_matcher')
     @patch('client_manager.service.ClientManager.send_query_window_for_window_manager')
     @patch('client_manager.service.ClientManager.update_bufferstreams_from_new_query')
     @patch('client_manager.service.ClientManager.create_query_dict')
     def test_add_query_should_properly_include_query_into_datastructure(
-            self, mocked_query_dict, mocked_buffer, mocked_send_window):
+            self, mocked_query_dict, mocked_buffer, mocked_send_window, mocked_send_matcher):
         subscriber_id = 'sub1'
         query_id = 123
         query_dict = {
@@ -159,6 +162,7 @@ class TestClientManager(MockedServiceStreamTestCase):
         mocked_query_dict.assert_called_once_with(subscriber_id, self.SIMPLE_QUERY_TEXT)
         mocked_buffer.assert_called_once_with(query=query_dict)
         mocked_send_window.assert_called_once_with(query=query_dict)
+        mocked_send_matcher.assert_called_once_with(query=query_dict)
         self.assertIn(123, self.service.queries.keys())
         self.assertIn(query_dict, self.service.queries.values())
 
@@ -171,6 +175,9 @@ class TestClientManager(MockedServiceStreamTestCase):
             'from': 'test',
             'content': ['ObjectDetection'],
             'window': 'window',
+            'match': 'match',
+            'where': 'where',
+            'ret': 'ret',
             'etc': '...'
         }
         query_dict2 = {
