@@ -39,7 +39,7 @@ class TestClientManager(MockedServiceStreamTestCase):
     REGISTER QUERY my_first_query
     OUTPUT K_GRAPH_JSON
     CONTENT ObjectDetection, ColorDetection
-    MATCH (c1:Car {color:'blue'}) AND (c2:Car {color:'white'})
+    MATCH (c1:Car {color:'blue'}), (c2:Car {color:'white'})
     FROM test
     WITHIN TUMBLING_COUNT_WINDOW(2)
     RETURN *
