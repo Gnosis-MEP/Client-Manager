@@ -16,6 +16,7 @@ class ClientManager(BaseTracerService):
                  adaptation_planner_cmd_key,
                  window_manager_cmd_key,
                  matcher_cmd_key,
+                 forwarder_cmd_key,
                  mocked_registry,
                  logging_level,
                  tracer_configs):
@@ -34,7 +35,7 @@ class ClientManager(BaseTracerService):
         self.event_dispatcher_cmd = self.stream_factory.create(key=event_dispatcher_cmd_key, stype='streamOnly')
         self.adaptation_planner_cmd = self.stream_factory.create(key=adaptation_planner_cmd_key, stype='streamOnly')
         self.matcher_cmd = self.stream_factory.create(key=matcher_cmd_key, stype='streamOnly')
-        # self.forwarder_cmd = self.stream_factory.create(key=forwarder_cmd_key, stype='streamOnly')
+        self.forwarder_cmd = self.stream_factory.create(key=forwarder_cmd_key, stype='streamOnly')
         self.window_manager_cmd = self.stream_factory.create(key=window_manager_cmd_key, stype='streamOnly')
 
         self.query_parser = QueryParser()

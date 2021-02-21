@@ -13,6 +13,7 @@ from client_manager.conf import (
     ADAPTATION_MONITOR_CMD_KEY,
     WINDOW_MANAGER_CMD_KEY,
     MATCHER_CMD_KEY,
+    FORWARDER_CMD_KEY,
 )
 
 
@@ -25,6 +26,7 @@ class TestClientManager(MockedServiceStreamTestCase):
         'adaptation_planner_cmd_key': ADAPTATION_MONITOR_CMD_KEY,
         'window_manager_cmd_key': WINDOW_MANAGER_CMD_KEY,
         'matcher_cmd_key': MATCHER_CMD_KEY,
+        'forwarder_cmd_key': FORWARDER_CMD_KEY,
         'mocked_registry': lambda x: (),
         'logging_level': 'ERROR',
         'tracer_configs': {'reporting_host': None, 'reporting_port': None},
