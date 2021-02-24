@@ -4,6 +4,7 @@ from event_service_utils.tests.base_test_case import MockedServiceStreamTestCase
 from event_service_utils.tests.json_msg_helper import prepare_event_msg_tuple
 
 from client_manager.service import ClientManager
+from client_manager.mocked_service_registry import MockedRegistry
 
 from client_manager.conf import (
     SERVICE_STREAM_KEY,
@@ -27,7 +28,7 @@ class TestClientManager(MockedServiceStreamTestCase):
         'window_manager_cmd_key': WINDOW_MANAGER_CMD_KEY,
         'matcher_cmd_key': MATCHER_CMD_KEY,
         'forwarder_cmd_key': FORWARDER_CMD_KEY,
-        'mocked_registry': lambda x: (),
+        'mocked_registry': MockedRegistry(),
         'logging_level': 'ERROR',
         'tracer_configs': {'reporting_host': None, 'reporting_port': None},
     }

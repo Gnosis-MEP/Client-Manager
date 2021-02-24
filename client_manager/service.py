@@ -96,6 +96,7 @@ class ClientManager(BaseTracerService):
             'id': self.service_based_random_event_id(),
             'action': 'updateControlFlow',
             'data_flow': service_function_chain,
+            'qos_policies': {'accuracy': 'min', 'latency': 'max'},
             'query_id': query['id'],
             'publisher_id': publisher_id,
         }
@@ -216,6 +217,12 @@ class ClientManager(BaseTracerService):
         if publisher is None:
             self.logger.info('Ignoring removal of non-existing publisher')
 
+    def add_service_worker_action(self, worker):
+        service_type = worker['service_type']
+        stream_key = worker['stream_key']
+        service_dict = self.mocked_registry.available_services.setdefault(service_type, {'workers': {}})
+        service_dict['workers'][stream_key] = worker
+
     def process_action(self, action, event_data, json_msg):
         if not super(ClientManager, self).process_action(action, event_data, json_msg):
             return False
@@ -240,11 +247,15 @@ class ClientManager(BaseTracerService):
                 publisher_id=event_data['publisher_id']
             )
 
+        elif action == 'addServiceWorker':
+            self.add_service_worker_action(event_data['worker'])
+
     def log_state(self):
         super(ClientManager, self).log_state()
         self._log_dict('Publishers', self.publishers)
         self._log_dict('Queries', self.queries)
         self._log_dict('Bufferstreams', self.buffer_hash_to_query_map)
+        self._log_dict('Available Services', self.mocked_registry.available_services)
 
     def run(self):
         super(ClientManager, self).run()

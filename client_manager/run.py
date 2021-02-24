@@ -23,7 +23,7 @@ from client_manager.conf import (
 
 
 def run_service():
-    mocked_registry = MockedRegistry(MOCKED_SERVICE_REGISTRY)
+    mocked_registry = MockedRegistry()
 
     tracer_configs = {
         'reporting_host': TRACER_REPORTING_HOST,
