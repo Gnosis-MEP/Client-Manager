@@ -96,7 +96,7 @@ class ClientManager(BaseTracerService):
             'id': self.service_based_random_event_id(),
             'action': 'updateControlFlow',
             'data_flow': service_function_chain,
-            'qos_policies': {'accuracy': 'min', 'latency': 'max'},
+            'qos_policies': query.get('qos_policies', {}),
             'query_id': query['id'],
             'publisher_id': publisher_id,
         }
