@@ -58,11 +58,31 @@ def send_data_msg(service_stream):
 
 def main():
     stream_factory = RedisStreamFactory(host=REDIS_ADDRESS, port=REDIS_PORT)
-    service_cmd = stream_factory.create(SERVICE_CMD_KEY, stype='streamOnly')
-    service_stream = stream_factory.create(SERVICE_STREAM_KEY, stype='streamOnly')
+
     import ipdb; ipdb.set_trace()
-    send_action_msgs(service_cmd)
-    send_data_msg(service_stream)
+    service_cmd = stream_factory.create(SERVICE_CMD_KEY, stype='streamOnly')
+    service_cmd.write_events(
+        new_action_msg(
+            'someAction',
+            {
+                'some': 'event',
+                'data': 'to be used'
+            }
+        )
+    )
+    service_cmd = stream_factory.create('pubJoin', stype='streamOnly')
+    service_cmd.write_events(
+        new_action_msg(
+            'pubJoin',
+            {
+                'publisher_id': 'pid',
+                'source': 'psource',
+                'meta': {}
+            }
+        )
+    )
+    # service_stream = stream_factory.create(SERVICE_STREAM_KEY, stype='streamOnly')
+    # send_data_msg(service_stream)
 
 
 if __name__ == '__main__':

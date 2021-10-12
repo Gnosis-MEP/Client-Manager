@@ -2,21 +2,23 @@ import hashlib
 import threading
 
 from event_service_utils.logging.decorators import timer_logger
-from event_service_utils.services.tracer import BaseTracerService
+from event_service_utils.services.event_driven import BaseEventDrivenCMDService
 from event_service_utils.tracing.jaeger import init_tracer
 from gnosis_epl.main import QueryParser
 
+# preprocessor_cmd_key,
+# event_dispatcher_cmd_key,
+# adaptation_planner_cmd_key,
+# window_manager_cmd_key,
+# matcher_cmd_key,
+# forwarder_cmd_key,
 
-class ClientManager(BaseTracerService):
+
+class ClientManager(BaseEventDrivenCMDService):
     def __init__(self,
-                 service_stream_key, service_cmd_key,
+                 service_stream_key, service_cmd_key_list,
+                 service_registry_cmd_key, service_details,
                  stream_factory,
-                 preprocessor_cmd_key,
-                 event_dispatcher_cmd_key,
-                 adaptation_planner_cmd_key,
-                 window_manager_cmd_key,
-                 matcher_cmd_key,
-                 forwarder_cmd_key,
                  mocked_registry,
                  logging_level,
                  tracer_configs):
@@ -24,19 +26,15 @@ class ClientManager(BaseTracerService):
         super(ClientManager, self).__init__(
             name=self.__class__.__name__,
             service_stream_key=service_stream_key,
-            service_cmd_key=service_cmd_key,
+            service_cmd_key_list=service_cmd_key_list,
+            service_registry_cmd_key=service_registry_cmd_key,
+            service_details=service_details,
             stream_factory=stream_factory,
             logging_level=logging_level,
             tracer=tracer,
         )
         self.cmd_validation_fields = ['id', 'action']
         self.data_validation_fields = ['id']
-        self.preprocessor_cmd = self.stream_factory.create(key=preprocessor_cmd_key, stype='streamOnly')
-        self.event_dispatcher_cmd = self.stream_factory.create(key=event_dispatcher_cmd_key, stype='streamOnly')
-        self.adaptation_planner_cmd = self.stream_factory.create(key=adaptation_planner_cmd_key, stype='streamOnly')
-        self.matcher_cmd = self.stream_factory.create(key=matcher_cmd_key, stype='streamOnly')
-        self.forwarder_cmd = self.stream_factory.create(key=forwarder_cmd_key, stype='streamOnly')
-        self.window_manager_cmd = self.stream_factory.create(key=window_manager_cmd_key, stype='streamOnly')
 
         self.query_parser = QueryParser()
 
@@ -223,31 +221,31 @@ class ClientManager(BaseTracerService):
         service_dict = self.mocked_registry.available_services.setdefault(service_type, {'workers': {}})
         service_dict['workers'][stream_key] = worker
 
-    def process_action(self, action, event_data, json_msg):
-        if not super(ClientManager, self).process_action(action, event_data, json_msg):
+    def process_event_type(self, event_type, event_data, json_msg):
+        if not super(ClientManager, self).process_event_type(event_type, event_data, json_msg):
             return False
-        if action == 'addQuery':
+        if event_type == 'addQuery':
             self.add_query_action(
                 subscriber_id=event_data['subscriber_id'],
                 query_text=event_data['query']
             )
-        elif action == 'delQuery':
+        elif event_type == 'delQuery':
             self.del_query_action(
                 subscriber_id=event_data['subscriber_id'],
                 query_name=event_data['query_name']
             )
-        elif action == 'pubJoin':
+        elif event_type == 'pubJoin':
             self.pub_join_action(
                 publisher_id=event_data['publisher_id'],
                 source=event_data['source'],
                 meta=event_data['meta']
             )
-        elif action == 'pubLeave':
+        elif event_type == 'pubLeave':
             self.pub_leave_action(
                 publisher_id=event_data['publisher_id']
             )
 
-        elif action == 'addServiceWorker':
+        elif event_type == 'addServiceWorker':
             self.add_service_worker_action(event_data['worker'])
 
     def log_state(self):
