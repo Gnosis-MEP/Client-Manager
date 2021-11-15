@@ -9,7 +9,7 @@ from client_manager.conf import (
     REDIS_PORT,
     SERVICE_REGISTRY_CMD_KEY,
     SERVICE_STREAM_KEY,
-    SERVICE_CMD_KEY,
+    SERVICE_CMD_KEY_LIST,
     PREPROCESSOR_CMD_KEY,
     EVENT_DISPATCHER_CMD_KEY,
     ADAPTATION_MONITOR_CMD_KEY,
@@ -20,6 +20,8 @@ from client_manager.conf import (
     TRACER_REPORTING_HOST,
     TRACER_REPORTING_PORT,
     MOCKED_SERVICE_REGISTRY,
+    LISTEN_CMD_ENTITY_TYPE_PUBJOIN,
+    SERVICE_DETAILS,
 )
 
 
@@ -30,16 +32,12 @@ def run_service():
         'reporting_host': TRACER_REPORTING_HOST,
         'reporting_port': TRACER_REPORTING_PORT,
     }
-    service_cmd_key_list = [
-        SERVICE_CMD_KEY,
-        'pubJoin'
-    ]
     stream_factory = RedisStreamFactory(host=REDIS_ADDRESS, port=REDIS_PORT)
     service = ClientManager(
         service_stream_key=SERVICE_STREAM_KEY,
-        service_cmd_key_list=service_cmd_key_list,
+        service_cmd_key_list=SERVICE_CMD_KEY_LIST,
         service_registry_cmd_key=SERVICE_REGISTRY_CMD_KEY,
-        service_details=None,
+        service_details=SERVICE_DETAILS,
         stream_factory=stream_factory,
         mocked_registry=mocked_registry,
         logging_level=LOGGING_LEVEL,

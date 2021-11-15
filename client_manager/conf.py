@@ -24,6 +24,17 @@ WINDOW_MANAGER_CMD_KEY = config('WINDOW_MANAGER_CMD_KEY')
 MATCHER_CMD_KEY = config('MATCHER_CMD_KEY')
 FORWARDER_CMD_KEY = config('FORWARDER_CMD_KEY')
 
+LISTEN_CMD_ENTITY_TYPE_PUBJOIN = config('LISTEN_CMD_ENTITY_TYPE_PUBJOIN')
+LISTEN_CMD_ENTITY_TYPE_PUBJOIN = config('LISTEN_CMD_ENTITY_TYPE_PUBJOIN')
+
+SERVICE_CMD_KEY_LIST = []
+for env_var in os.environ.keys():
+    if env_var.startswith('LISTEN_CMD_ENTITY_TYPE_'):
+        locals()[env_var] = config(env_var)
+        SERVICE_CMD_KEY_LIST.append(locals()[env_var])
+
+SERVICE_DETAILS = None
+
 
 def string_to_dict_cast(str_value):
     if str_value == "":

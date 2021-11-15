@@ -86,7 +86,7 @@ class ClientManager(BaseEventDrivenCMDService):
         self.logger.info(f'Sending "delBufferStreamKey" action: {new_event_data}')
         self.write_event_with_trace(new_event_data, self.event_dispatcher_cmd)
 
-    def send_update_controlflow_for_adaptation_monitor(self, query):
+    def publish_updated_controlflow(self, query):
         content_types = query['content']
         publisher_id = query['from'][0]
         service_function_chain = self.mocked_registry.get_service_function_chain_by_content_type_list(content_types)
@@ -184,7 +184,7 @@ class ClientManager(BaseEventDrivenCMDService):
         query = self.create_query_dict(subscriber_id, query_text)
         if query['id'] not in self.queries.keys():
             self.queries[query['id']] = query
-            self.send_update_controlflow_for_adaptation_monitor(query=query)
+            self.publish_updated_controlflow(query=query)
             self.send_query_matching_for_matcher(query=query)
             self.send_query_window_for_window_manager(query=query)
             self.update_bufferstreams_from_new_query(query=query)
