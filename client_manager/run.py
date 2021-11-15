@@ -2,7 +2,7 @@
 from event_service_utils.streams.redis import RedisStreamFactory
 
 from client_manager.service import ClientManager
-from client_manager.mocked_service_registry import MockedRegistry
+from client_manager.mocked_service_registry import ServiceRegistry
 
 from client_manager.conf import (
     REDIS_ADDRESS,
@@ -26,7 +26,7 @@ from client_manager.conf import (
 
 
 def run_service():
-    mocked_registry = MockedRegistry()
+    service_registry = ServiceRegistry()
 
     tracer_configs = {
         'reporting_host': TRACER_REPORTING_HOST,
@@ -39,7 +39,7 @@ def run_service():
         service_registry_cmd_key=SERVICE_REGISTRY_CMD_KEY,
         service_details=SERVICE_DETAILS,
         stream_factory=stream_factory,
-        mocked_registry=mocked_registry,
+        service_registry=service_registry,
         logging_level=LOGGING_LEVEL,
         tracer_configs=tracer_configs
     )

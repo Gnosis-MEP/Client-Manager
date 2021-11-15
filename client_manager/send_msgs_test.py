@@ -60,24 +60,38 @@ def main():
     stream_factory = RedisStreamFactory(host=REDIS_ADDRESS, port=REDIS_PORT)
 
     import ipdb; ipdb.set_trace()
-    service_cmd = stream_factory.create(SERVICE_CMD_KEY, stype='streamOnly')
-    service_cmd.write_events(
-        new_action_msg(
-            'someAction',
-            {
-                'some': 'event',
-                'data': 'to be used'
-            }
-        )
-    )
-    service_cmd = stream_factory.create('pubJoin', stype='streamOnly')
-    service_cmd.write_events(
+    pubJoin_cmd = stream_factory.create('pubJoin', stype='streamOnly')
+    pubJoin_cmd.write_events(
         new_action_msg(
             'pubJoin',
             {
                 'publisher_id': 'pid',
                 'source': 'psource',
-                'meta': {}
+                'meta': {
+                    'resolution': '300X300',
+                    'fps': '30',
+                }
+            }
+        )
+    )
+    query_text = """
+    REGISTER QUERY my_first_query
+    OUTPUT K_GRAPH_JSON
+    CONTENT ObjectDetection, ColorDetection
+    MATCH (c1:Car {color:'blue'}), (c2:Car {color:'white'})
+    FROM pid
+    WITHIN TUMBLING_COUNT_WINDOW(2)
+    RETURN *
+    """.strip()
+
+    addQuery_cmd = stream_factory.create('addQuery', stype='streamOnly')
+    addQuery_cmd.write_events(
+        new_action_msg(
+            'addQuery',
+            {
+                'subscriber_id': 'sid',
+                'query_id': 'qid',
+                'query': query_text
             }
         )
     )
