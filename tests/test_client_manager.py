@@ -10,14 +10,8 @@ from client_manager.service_registry import ServiceRegistry
 from client_manager.conf import (
     SERVICE_STREAM_KEY,
     SERVICE_CMD_KEY_LIST,
-    PREPROCESSOR_CMD_KEY,
-    EVENT_DISPATCHER_CMD_KEY,
-    ADAPTATION_MONITOR_CMD_KEY,
-    WINDOW_MANAGER_CMD_KEY,
-    MATCHER_CMD_KEY,
-    FORWARDER_CMD_KEY,
     SERVICE_DETAILS,
-    SERVICE_REGISTRY_CMD_KEY
+    PUB_EVENT_LIST
 )
 
 
@@ -25,7 +19,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
     GLOBAL_SERVICE_CONFIG = {
         'service_stream_key': SERVICE_STREAM_KEY,
         'service_cmd_key_list': SERVICE_CMD_KEY_LIST,
-        'service_registry_cmd_key': SERVICE_REGISTRY_CMD_KEY,
+        'pub_event_list': PUB_EVENT_LIST,
         'service_details': SERVICE_DETAILS,
         'service_registry': ServiceRegistry(),
         'logging_level': 'ERROR',
@@ -73,48 +67,45 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
     @patch('client_manager.service.ClientManager.process_event_type')
     def test_service_cmd_list_has_all_listened_event_types(self, mocked_process_event_type):
         expected_event_types = [
-            'pubJoin',
-            'addQuery',
-            'delQuery',
-            'pubLeave',
+            'PublisherRemoved',
+            'PublisherCreated',
+            'QueryRemoved',
+            'QueryCreated'
         ]
         self.assertEqual(
             self.service.service_cmd_key_list,
             expected_event_types
         )
 
-    @patch('client_manager.service.ClientManager.add_query_action')
-    def test_process_event_type_should_call_add_query_with_proper_parameters(self, mocked_add_query):
+    @patch('client_manager.service.ClientManager.process_query_created_event')
+    def test_process_event_type_should_call_process_query_created_event_with_proper_parameters(self, mocked_q_created_event):
         event_data = {
             'id': 1,
-            'action': 'addQuery',
             'subscriber_id': 'sub_id',
             'query': self.SIMPLE_QUERY_TEXT
         }
-        event_type = event_data['action']
+        event_type = 'QueryCreated'
         json_msg = prepare_event_msg_tuple(event_data)[1]
         self.service.process_event_type(event_type, event_data, json_msg)
-        mocked_add_query.assert_called_once_with(subscriber_id=event_data['subscriber_id'], query_text=event_data['query'])
+        mocked_q_created_event.assert_called_once_with(subscriber_id=event_data['subscriber_id'], query_text=event_data['query'])
 
-    @patch('client_manager.service.ClientManager.del_query_action')
-    def test_process_event_type_should_call_del_query_with_proper_parameters(self, mocked_del_query):
+    @patch('client_manager.service.ClientManager.process_query_removed_event')
+    def test_process_event_type_should_call_process_query_removed_event_with_proper_parameters(self, mocked_del_query):
         event_data = {
             'id': 1,
-            'action': 'delQuery',
             'subscriber_id': 'sub_id',
             'query_name': 'my_first_query'
         }
-        event_type = event_data['action']
+        event_type = 'QueryRemoved'
         json_msg = prepare_event_msg_tuple(event_data)[1]
         self.service.process_event_type(event_type, event_data, json_msg)
         mocked_del_query.assert_called_once_with(
             subscriber_id=event_data['subscriber_id'], query_name=event_data['query_name'])
 
-    @patch('client_manager.service.ClientManager.pub_join_action')
-    def test_process_event_type_should_call_pub_join_with_proper_parameters(self, mocked_pub_join):
+    @patch('client_manager.service.ClientManager.process_publisher_created_event')
+    def test_process_event_type_should_call_process_publisher_created_event_with_proper_parameters(self, mocked_pub_join):
         event_data = {
             'id': 1,
-            'action': 'pubJoin',
             'publisher_id': 'pub1',
             'source': 'rtmp://localhost/live/mystream',
             'meta': {
@@ -127,7 +118,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             }
         }
 
-        event_type = event_data['action']
+        event_type = 'PublisherCreated'
         json_msg = prepare_event_msg_tuple(event_data)[1]
         self.service.process_event_type(event_type, event_data, json_msg)
         mocked_pub_join.assert_called_once_with(
@@ -136,15 +127,14 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             meta=event_data['meta'],
         )
 
-    @patch('client_manager.service.ClientManager.pub_leave_action')
-    def test_process_event_type_should_call_pub_leave_with_proper_parameters(self, mocked_pub_leave):
+    @patch('client_manager.service.ClientManager.process_publisher_removed_event')
+    def test_process_event_type_should_call_process_publisher_removed_event_with_proper_parameters(self, mocked_pub_leave):
         event_data = {
             'id': 1,
-            'action': 'pubLeave',
             'publisher_id': 'pub1'
         }
 
-        event_type = event_data['action']
+        event_type = 'PublisherRemoved'
         json_msg = prepare_event_msg_tuple(event_data)[1]
         self.service.process_event_type(event_type, event_data, json_msg)
         mocked_pub_leave.assert_called_once_with(
@@ -161,7 +151,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
     @patch('client_manager.service.ClientManager.publish_registered_query_entity')
     @patch('client_manager.service.ClientManager.update_bufferstreams_from_new_query')
     @patch('client_manager.service.ClientManager.create_query_dict')
-    def test_add_query_should_properly_include_query_into_datastructure(
+    def test_process_query_created_event_should_properly_include_query_into_datastructure(
             self, mocked_query_dict, mocked_buffer, mocked_pub):
         subscriber_id = 'sub1'
         query_id = 123
@@ -193,15 +183,33 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             return_value=service_chain)
 
         mocked_query_dict.return_value = registered_query
-        self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_created_event(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
         mocked_query_dict.assert_called_once_with(subscriber_id, self.SIMPLE_QUERY_TEXT)
         mocked_buffer.assert_called_once_with(query=registered_query)
         self.assertIn(query_id, self.service.queries.keys())
         self.assertIn(registered_query, self.service.queries.values())
 
+
+    @patch('client_manager.service.ClientManager.publish_registered_query_entity')
+    @patch('client_manager.service.ClientManager.update_bufferstreams_from_new_query')
     @patch('client_manager.service.ClientManager.create_query_dict')
-    def test_add_query_shouldn_include_duplicated_query(self, mocked_query_dict):
+    def test_process_query_created_event_shouldnt_process_query_if_no_pub_registered(
+            self, mocked_query_dict, mocked_buffer, mocked_pub):
+        subscriber_id = 'sub1'
+        query_id = 123
+
+        mocked_query_dict.return_value = None
+        self.service.process_query_created_event(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+
+        mocked_query_dict.assert_called_once_with(subscriber_id, self.SIMPLE_QUERY_TEXT)
+        self.assertFalse(mocked_buffer.called)
+        self.assertFalse(mocked_pub.called)
+
+        self.assertNotIn(query_id, self.service.queries.keys())
+
+    @patch('client_manager.service.ClientManager.create_query_dict')
+    def test_process_query_created_event_shouldn_include_duplicated_query(self, mocked_query_dict):
         subscriber_id = 'sub1'
         query_id = 123
         service_chain = ['ObjectDetection', 'ColorDetection']
@@ -235,18 +243,20 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             return_value=service_chain)
 
         mocked_query_dict.return_value = registered_query
-        self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_created_event(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
         mocked_query_dict.return_value = registered_query2
-        self.service.add_query_action(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_created_event(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
         self.assertIn(123, self.service.queries.keys())
         self.assertIn(registered_query, self.service.queries.values())
         self.assertNotIn(registered_query2, self.service.queries.values())
 
+
+    @patch('client_manager.service.ClientManager.publish_registered_query_entity_del')
     @patch('client_manager.service.ClientManager.update_bufferstreams_from_del_query')
     @patch('client_manager.service.ClientManager.create_query_id')
-    def test_del_query_should_properly_remove_query_into_datastructure(self, mocked_query_id, mocked_buffer):
+    def test_process_query_removed_event_should_properly_remove_query_into_datastructure(self, mocked_query_id, mocked_buffer, p_q_del):
         subscriber_id = 'sub1'
         query_name = 'some query'
         query_id = 123
@@ -257,10 +267,11 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         }
 
         mocked_query_id.return_value = query_id
-        self.service.del_query_action(subscriber_id, query_name=query_name)
+        self.service.process_query_removed_event(subscriber_id, query_name=query_name)
 
         mocked_query_id.assert_called_once_with(subscriber_id, query_name)
         mocked_buffer.assert_called_once_with(query_id)
+        p_q_del.assert_called_once_with(query=query_dict)
         self.assertNotIn(123, self.service.queries.keys())
         self.assertNotIn(query_dict, self.service.queries.values())
 
@@ -268,7 +279,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         self.assertIn({'other': '...'}, self.service.queries.values())
 
     @patch('client_manager.service.ClientManager.create_query_id')
-    def test_del_query_should_ignore_deleting_nonexising_query(self, mocked_query_id):
+    def test_process_query_removed_event_should_ignore_deleting_nonexising_query(self, mocked_query_id):
         subscriber_id = 'sub1'
         query_name = 'some query'
         query_id = 123
@@ -278,7 +289,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         }
 
         mocked_query_id.return_value = query_id
-        self.service.del_query_action(subscriber_id, query_name=query_name)
+        self.service.process_query_removed_event(subscriber_id, query_name=query_name)
 
         mocked_query_id.assert_called_once_with(subscriber_id, query_name)
         self.assertNotIn(123, self.service.queries.keys())
@@ -287,7 +298,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         self.assertIn(456, self.service.queries.keys())
         self.assertIn({'other': '...'}, self.service.queries.values())
 
-    def test_pub_join_should_properly_include_publisher_into_datastructure(self):
+    def test_process_publisher_created_event_should_properly_include_publisher_into_datastructure(self):
 
         publisher_id = 'pub1'
         source = 'http://etc.com',
@@ -297,12 +308,12 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             'source': source,
             'meta': meta
         }
-        self.service.pub_join_action(publisher_id, source, meta)
+        self.service.process_publisher_created_event(publisher_id, source, meta)
 
         self.assertIn(publisher_id, self.service.publishers.keys())
         self.assertIn(publisher, self.service.publishers.values())
 
-    def test_pub_leave_should_properly_remove_publisher_into_datastructure(self):
+    def test_process_publisher_removed_event_should_properly_remove_publisher_into_datastructure(self):
         publisher_id = 'pub1'
         source = 'http://etc.com',
         meta = {'fps': 30}
@@ -311,8 +322,8 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             'source': source,
             'meta': meta
         }
-        self.service.pub_join_action(publisher_id, source, meta)
-        self.service.pub_leave_action(publisher_id)
+        self.service.process_publisher_created_event(publisher_id, source, meta)
+        self.service.process_publisher_removed_event(publisher_id)
 
         self.assertNotIn(publisher_id, self.service.publishers.keys())
         self.assertNotIn(publisher, self.service.publishers.values())
@@ -338,6 +349,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             'subscriber_id': subscriber_id,
             'query_id': query_id,
             'parsed_query': {
+                'name': 'my_first_query',
                 'from': [pub_id],
                 'content': ['ObjectDetection', 'ColorDetection'],
                 'window': {
@@ -377,6 +389,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             'subscriber_id': subscriber_id,
             'query_id': query_id,
             'parsed_query': {
+                'name': 'my_first_query',
                 'from': [pub_id],
                 'content': ['ObjectDetection', 'ColorDetection'],
                 'window': {
@@ -393,132 +406,76 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
 
         self.assertEqual(ret, None)
 
+    @patch('client_manager.service.ClientManager.generate_query_bufferstream_dict')
+    @patch('client_manager.service.ClientManager.generate_query_service_chain')
+    @patch('client_manager.service.ClientManager.create_query_id')
+    def test_create_query_dict_parses_query_and_return_proper_dict(self, mocked_query_id, mocked_sc, mocked_buff_dict):
+        subscriber_id = 'sub_1'
+        query_id = '123'
+        expected_query_name = 'my_first_query'
+        mocked_query_id.return_value = query_id
+        query = self.service.create_query_dict(subscriber_id, self.SIMPLE_QUERY_TEXT)
+        mocked_query_id.assert_called_once_with(subscriber_id, expected_query_name)
+        self.assertIn('subscriber_id', query.keys())
+        self.assertIn('query_id', query.keys())
+        self.assertIn('parsed_query', query.keys())
+        self.assertIn('buffer_stream', query.keys())
+        self.assertIn('service_chain', query.keys())
 
-    # @patch('client_manager.service.ClientManager.create_query_id')
-    # def test_create_query_dict_parses_query_and_return_proper_dict(self, mocked_query_id):
-    #     subscriber_id = 'sub_1'
-    #     query_id = '123'
-    #     expected_query_name = 'my_first_query'
-    #     mocked_query_id.return_value = query_id
-    #     query = self.service.create_query_dict(subscriber_id, self.SIMPLE_QUERY_TEXT)
-    #     mocked_query_id.assert_called_once_with(subscriber_id, expected_query_name)
-    #     self.assertIn('subscriber_id', query.keys())
-    #     self.assertIn('id', query.keys())
-    #     self.assertIn('name', query.keys())
+        self.assertEqual(query['query_id'], query_id)
+        self.assertEqual(query['subscriber_id'], subscriber_id)
+        self.assertEqual(query['parsed_query']['name'], expected_query_name)
 
-    #     self.assertEqual(query['id'], query_id)
-    #     self.assertEqual(query['subscriber_id'], subscriber_id)
-    #     self.assertEqual(query['name'], expected_query_name)
+    def test_update_bufferstreams_from_new_query_should_update_bufferstreams(self):
+        subscriber_id = 'sub_1'
+        query_id = '123'
+        pub_id = 'pub1'
+        self.service.publishers = {
+            pub_id: {
+                'meta': {
+                    'fps': '30',
+                    'resolution': '300x300',
+                },
+                'source': 'abc',
+            }
+        }
+        registered_query = {
+            'subscriber_id': subscriber_id,
+            'query_id': query_id,
+            'parsed_query': {
+                'name': 'my_first_query',
+                'from': [pub_id],
+                'content': ['ObjectDetection', 'ColorDetection'],
+                'window': {
+                    'window_type': 'TUMBLING_COUNT_WINDOW',
+                    'args': [2]
+                }
+            },
+            'buffer_stream': {'buffer_stream_key': 'key'}
+        }
 
-    # @patch('client_manager.service.ClientManager.send_start_preprocessor_action')
-    # @patch('client_manager.service.ClientManager.send_add_buffer_stream_key_to_event_dispatcher')
-    # @patch('client_manager.service.ClientManager.get_unique_buffer_hash')
-    # def test_update_bufferstreams_from_new_query_should_update_bufferstreams(
-    #         self, mocked_unique_buff, mocked_send_b, mocked_send_p):
-    #     query_id = '123'
-    #     bufferstream_key = 'bufferstream-key'
-    #     mocked_unique_buff.return_value = bufferstream_key
-    #     self.service.publishers = {
-    #         'pub1': {
-    #             'meta': {
-    #                 'fps': '30',
-    #                 'resolution': '300x300',
-    #             },
-    #             'source': 'abc',
-    #         }
-    #     }
-    #     query = {
-    #         'id': query_id,
-    #         'from': ['pub1'],
-    #         'content': ['ObjectDetection', 'ColorDetection']
-    #     }
+        self.service.update_bufferstreams_from_new_query(registered_query)
+        self.assertIn('key', self.service.buffer_hash_to_query_map)
+        self.assertEqual(self.service.buffer_hash_to_query_map['key'], set({query_id}))
 
-    #     self.service.update_bufferstreams_from_new_query(query)
-    #     mocked_send_b.assert_called_once_with('pub1', bufferstream_key)
-    #     mocked_send_p.assert_called_once_with('pub1', 'abc', '300x300', '30', ['123'], 'bufferstream-key')
-    #     self.assertIn(bufferstream_key, self.service.buffer_hash_to_query_map)
-    #     self.assertEqual(self.service.buffer_hash_to_query_map[bufferstream_key], set({query_id}))
+    def test_update_bufferstreams_from_del_query_should_update_bufferstreams(self):
+        query_id = '123'
+        bufferstream_key = 'bufferstream-key'
+        self.service.buffer_hash_to_query_map = {bufferstream_key: set({query_id})}
 
-    # @patch('client_manager.service.ClientManager.send_start_preprocessor_action')
-    # @patch('client_manager.service.ClientManager.send_add_buffer_stream_key_to_event_dispatcher')
-    # @patch('client_manager.service.ClientManager.get_unique_buffer_hash')
-    # def test_update_bufferstreams_from_new_query_should_not_update_bufferstreams_if_no_pub(
-    #         self, mocked_unique_buff, mocked_send_b, mocked_send_p):
-    #     query_id = '123'
-    #     bufferstream_key = 'bufferstream-key'
-    #     mocked_unique_buff.return_value = bufferstream_key
-    #     self.service.publishers = {
-    #         'pub1': {
-    #             'meta': {
-    #                 'fps': '30',
-    #                 'resolution': '300x300',
-    #             }
-    #         }
-    #     }
-    #     query = {
-    #         'id': query_id,
-    #         'from': ['pub2']
-    #     }
+        self.service.update_bufferstreams_from_del_query(query_id)
+        self.assertDictEqual(
+            self.service.buffer_hash_to_query_map,
+            {}
+        )
 
-    #     self.service.update_bufferstreams_from_new_query(query)
-    #     self.assertFalse(mocked_send_b.called)
-    #     self.assertFalse(mocked_send_p.called)
-    #     self.assertFalse(mocked_unique_buff.called)
-    #     self.assertNotIn(bufferstream_key, self.service.buffer_hash_to_query_map)
+    def test_update_bufferstreams_from_del_query_shouldn_remove_bufferstream_if_not_empty(self):
+        query_id = '123'
+        bufferstream_key = 'bufferstream-key'
+        self.service.buffer_hash_to_query_map = {bufferstream_key: set({query_id, 'query_2'})}
 
-    # @patch('client_manager.service.ClientManager.send_stop_preprocessor_action')
-    # @patch('client_manager.service.ClientManager.send_del_buffer_stream_key_to_event_dispatcher')
-    # def test_update_bufferstreams_from_del_query_should_update_bufferstreams(self, mocked_send_b, mocked_send_p):
-    #     query_id = '123'
-    #     bufferstream_key = 'bufferstream-key'
-    #     self.service.buffer_hash_to_query_map = {bufferstream_key: set({query_id})}
-
-    #     self.service.update_bufferstreams_from_del_query(query_id)
-    #     self.assertDictEqual(
-    #         self.service.buffer_hash_to_query_map,
-    #         {}
-    #     )
-    #     mocked_send_b.assert_called_once_with(bufferstream_key)
-    #     mocked_send_p.assert_called_once_with(bufferstream_key)
-
-    # @patch('client_manager.service.ClientManager.send_stop_preprocessor_action')
-    # @patch('client_manager.service.ClientManager.send_del_buffer_stream_key_to_event_dispatcher')
-    # def test_update_bufferstreams_from_del_query_shouldn_remove_bufferstream_if_not_empty(
-    #         self, mocked_send_b, mocked_send_p):
-    #     query_id = '123'
-    #     bufferstream_key = 'bufferstream-key'
-    #     self.service.buffer_hash_to_query_map = {bufferstream_key: set({query_id, 'query_2'})}
-
-    #     self.service.update_bufferstreams_from_del_query(query_id)
-    #     self.assertDictEqual(
-    #         self.service.buffer_hash_to_query_map,
-    #         {bufferstream_key: set({'query_2'})}
-    #     )
-
-    #     self.assertFalse(mocked_send_b.called)
-    #     self.assertFalse(mocked_send_p.called)
-
-    # @patch('client_manager.service.ClientManager.service_based_random_event_id')
-    # @patch('client_manager.service.ClientManager.write_event_with_trace')
-    # def test_send_query_window_for_window_manager(self, mocked_write_event, mocked_rand_id):
-    #     mocked_rand_id.return_value = 123
-    #     query_id = '123'
-    #     query = {
-    #         'id': query_id,
-    #         'from': ['pub1'],
-    #         'content': ['ObjectDetection', 'ColorDetection'],
-    #         'window': {
-    #             'window_type': 'TUMBLING_COUNT_WINDOW',
-    #             'args': [2]
-    #         }
-    #     }
-    #     self.service.send_query_window_for_window_manager(query=query)
-    #     mocked_write_event.assert_called_once_with(
-    #         {
-    #             'id': 123,
-    #             'action': 'addQueryWindow',
-    #             'window': query['window'],
-    #             'query_id': query_id
-    #         },
-    #         self.service.window_manager_cmd
-    #     )
+        self.service.update_bufferstreams_from_del_query(query_id)
+        self.assertDictEqual(
+            self.service.buffer_hash_to_query_map,
+            {bufferstream_key: set({'query_2'})}
+        )

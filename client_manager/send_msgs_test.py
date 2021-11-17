@@ -7,7 +7,6 @@ from client_manager.conf import (
     REDIS_ADDRESS,
     REDIS_PORT,
     SERVICE_STREAM_KEY,
-    SERVICE_CMD_KEY,
 )
 
 
@@ -15,55 +14,18 @@ def make_dict_key_bites(d):
     return {k.encode('utf-8'): v for k, v in d.items()}
 
 
-def new_action_msg(action, event_data):
-    event_data['action'] = action
+def new_msg(event_data):
     event_data.update({'id': str(uuid.uuid4())})
     return {'event': json.dumps(event_data)}
-
-
-def send_action_msgs(service_cmd):
-    msg_1 = new_action_msg(
-        'someAction',
-        {
-            'some': 'event',
-            'data': 'to be used'
-        }
-    )
-    msg_2 = new_action_msg(
-        'someOtherAction',
-        {
-            'some': 'other event',
-            'data': 'to be used'
-        }
-    )
-
-    print(f'Sending msg {msg_1}')
-    service_cmd.write_events(msg_1)
-    print(f'Sending msg {msg_2}')
-    service_cmd.write_events(msg_2)
-
-
-def send_data_msg(service_stream):
-    data_msg = {
-        'event': json.dumps(
-            {
-                'id': str(uuid.uuid4()),
-                'some': 'data'
-            }
-        )
-    }
-    print(f'Sending msg {data_msg}')
-    service_stream.write_events(data_msg)
 
 
 def main():
     stream_factory = RedisStreamFactory(host=REDIS_ADDRESS, port=REDIS_PORT)
 
     import ipdb; ipdb.set_trace()
-    pubJoin_cmd = stream_factory.create('pubJoin', stype='streamOnly')
+    pubJoin_cmd = stream_factory.create('PublisherCreated', stype='streamOnly')
     pubJoin_cmd.write_events(
-        new_action_msg(
-            'pubJoin',
+        new_msg(
             {
                 'publisher_id': 'pid',
                 'source': 'psource',
@@ -84,10 +46,9 @@ def main():
     RETURN *
     """.strip()
 
-    addQuery_cmd = stream_factory.create('addQuery', stype='streamOnly')
+    addQuery_cmd = stream_factory.create('QueryCreated', stype='streamOnly')
     addQuery_cmd.write_events(
-        new_action_msg(
-            'addQuery',
+        new_msg(
             {
                 'subscriber_id': 'sid',
                 'query_id': 'qid',

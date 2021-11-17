@@ -10,7 +10,7 @@ from gnosis_epl.main import QueryParser
 class ClientManager(BaseEventDrivenCMDService):
     def __init__(self,
                  service_stream_key, service_cmd_key_list,
-                 service_registry_cmd_key, service_details,
+                 pub_event_list, service_details,
                  stream_factory,
                  service_registry,
                  logging_level,
@@ -20,15 +20,14 @@ class ClientManager(BaseEventDrivenCMDService):
             name=self.__class__.__name__,
             service_stream_key=service_stream_key,
             service_cmd_key_list=service_cmd_key_list,
-            service_registry_cmd_key=service_registry_cmd_key,
+            pub_event_list=pub_event_list,
             service_details=service_details,
             stream_factory=stream_factory,
             logging_level=logging_level,
             tracer=tracer,
         )
-        self.pub_stream_registered_query_entity = self.stream_factory.create(key='RegisteredQuery', stype='streamOnly')
 
-        self.cmd_validation_fields = ['id', 'action']
+        self.cmd_validation_fields = ['id']
         self.data_validation_fields = ['id']
 
         self.query_parser = QueryParser()
@@ -51,8 +50,8 @@ class ClientManager(BaseEventDrivenCMDService):
         new_event_data = query.copy()
         new_event_data['id'] = self.service_based_random_event_id()
 
-        self.logger.info(f'Publishing "RegisteredQuery" entity: {new_event_data}')
-        self.write_event_with_trace(new_event_data, self.pub_stream_registered_query_entity)
+        self.logger.info(f'Publishing "QueryRegistered" entity: {new_event_data}')
+        self.write_event_with_trace(new_event_data, self.pub_stream_query_registered)
 
     def get_unique_buffer_hash(self, query_content, publisher_id, resolution, fps):
         keys_list = tuple(query_content) + tuple([publisher_id, resolution, fps])
@@ -66,32 +65,33 @@ class ClientManager(BaseEventDrivenCMDService):
         return query_id
 
     def create_query_dict(self, subscriber_id, query_text):
-        query = self.query_parser.parse(query_text)
-        query_id = self.create_query_id(subscriber_id, query['name'])
-        publisher_id = query['from'][0]
+        parsed_query = self.query_parser.parse(query_text)
+        query_id = self.create_query_id(subscriber_id, parsed_query['name'])
+
+        query = {
+            'subscriber_id': subscriber_id,
+            'query_id': query_id,
+            'parsed_query': {
+                'name': parsed_query['name'],
+                'from': parsed_query['from'],
+                'content': parsed_query['content'],
+                'window': parsed_query['window'],
+                'qos_policies': parsed_query.get('qos_policies', {}),
+                # 'cypher_query': query['cypher_query'],
+            }
+        }
+        publisher_id = query['parsed_query']['from'][0]
         buffer_stream_dict = self.generate_query_bufferstream_dict(query)
         if buffer_stream_dict is None:
             self.logger.info(f'Publisher id {publisher_id} not available. Will not process Query {query}')
             return
 
-        service_chain = self.generate_query_service_chain(query)
-        registered_query = {
-            'subscriber_id': query['subscriber_id'],
-            'query_id': query_id,
-            'parsed_query': {
-                'from': query['from'],
-                'content': query['content'],
-                'window': query['window'],
-                'qos_policies': query.get('qos_policies', {}),
-                # 'cypher_query': query['cypher_query'],
-            },
-            'buffer_stream': buffer_stream_dict,
-            'service_chain': service_chain,
-        }
-        return registered_query
+        query['buffer_stream'] = buffer_stream_dict
+        query['service_chain'] = self.generate_query_service_chain(query)
+        return query
 
     def generate_query_service_chain(self, query):
-        content_types = query['content']
+        content_types = query['parsed_query']['content']
         service_function_chain = self.service_registry.get_service_function_chain_by_content_type_list(content_types)
         return service_function_chain
 
@@ -133,7 +133,7 @@ class ClientManager(BaseEventDrivenCMDService):
         if buffer_to_remove:
             del self.buffer_hash_to_query_map[buffer_to_remove]
 
-    def add_query_action(self, subscriber_id, query_text):
+    def process_query_created_event(self, subscriber_id, query_text):
         query = self.create_query_dict(subscriber_id, query_text)
         if query is not None:
             if query['query_id'] not in self.queries.keys():
@@ -143,7 +143,7 @@ class ClientManager(BaseEventDrivenCMDService):
             else:
                 self.logger.info('Ignoring duplicated query addition')
 
-    def del_query_action(self, subscriber_id, query_name):
+    def process_query_removed_event(self, subscriber_id, query_name):
         query_id = self.create_query_id(subscriber_id, query_name)
 
         query = self.queries.pop(query_id, None)
@@ -153,7 +153,7 @@ class ClientManager(BaseEventDrivenCMDService):
             self.publish_registered_query_entity_del(query=query)
             self.update_bufferstreams_from_del_query(query_id)
 
-    def pub_join_action(self, publisher_id, source, meta):
+    def process_publisher_created_event(self, publisher_id, source, meta):
         if publisher_id not in self.publishers.keys():
             self.publishers[publisher_id] = {
                 'id': publisher_id,
@@ -163,12 +163,12 @@ class ClientManager(BaseEventDrivenCMDService):
         else:
             self.logger.info('Ignoring duplicated publisher incluson')
 
-    def pub_leave_action(self, publisher_id):
+    def process_publisher_removed_event(self, publisher_id):
         publisher = self.publishers.pop(publisher_id, None)
         if publisher is None:
             self.logger.info('Ignoring removal of non-existing publisher')
 
-    def add_service_worker_action(self, worker):
+    def process_service_worker_announced_event(self, worker):
         service_type = worker['service_type']
         stream_key = worker['stream_key']
         service_dict = self.service_registry.available_services.setdefault(service_type, {'workers': {}})
@@ -177,29 +177,29 @@ class ClientManager(BaseEventDrivenCMDService):
     def process_event_type(self, event_type, event_data, json_msg):
         if not super(ClientManager, self).process_event_type(event_type, event_data, json_msg):
             return False
-        if event_type == 'addQuery':
-            self.add_query_action(
+        if event_type == 'QueryCreated':
+            self.process_query_created_event(
                 subscriber_id=event_data['subscriber_id'],
                 query_text=event_data['query']
             )
-        elif event_type == 'delQuery':
-            self.del_query_action(
+        elif event_type == 'QueryRemoved':
+            self.process_query_removed_event(
                 subscriber_id=event_data['subscriber_id'],
                 query_name=event_data['query_name']
             )
-        elif event_type == 'pubJoin':
-            self.pub_join_action(
+        elif event_type == 'PublisherCreated':
+            self.process_publisher_created_event(
                 publisher_id=event_data['publisher_id'],
                 source=event_data['source'],
                 meta=event_data['meta']
             )
-        elif event_type == 'pubLeave':
-            self.pub_leave_action(
+        elif event_type == 'PublisherRemoved':
+            self.process_publisher_removed_event(
                 publisher_id=event_data['publisher_id']
             )
 
-        elif event_type == 'addServiceWorker':
-            self.add_service_worker_action(event_data['worker'])
+        elif event_type == 'ServiceWorkerAnnounced':
+            self.process_service_worker_announced_event(event_data['worker'])
 
     def log_state(self):
         super(ClientManager, self).log_state()

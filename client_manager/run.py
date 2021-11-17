@@ -7,7 +7,7 @@ from client_manager.service_registry import ServiceRegistry
 from client_manager.conf import (
     REDIS_ADDRESS,
     REDIS_PORT,
-    SERVICE_REGISTRY_CMD_KEY,
+    PUB_EVENT_LIST,
     SERVICE_STREAM_KEY,
     SERVICE_CMD_KEY_LIST,
     LOGGING_LEVEL,
@@ -28,7 +28,7 @@ def run_service():
     service = ClientManager(
         service_stream_key=SERVICE_STREAM_KEY,
         service_cmd_key_list=SERVICE_CMD_KEY_LIST,
-        service_registry_cmd_key=SERVICE_REGISTRY_CMD_KEY,
+        pub_event_list=PUB_EVENT_LIST,
         service_details=SERVICE_DETAILS,
         stream_factory=stream_factory,
         service_registry=service_registry,
