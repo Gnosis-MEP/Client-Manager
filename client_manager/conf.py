@@ -15,7 +15,6 @@ TRACER_REPORTING_PORT = config('TRACER_REPORTING_PORT', default='6831')
 SERVICE_REGISTRY_CMD_KEY = config('SERVICE_REGISTRY_CMD_KEY')
 
 SERVICE_STREAM_KEY = config('SERVICE_STREAM_KEY')
-SERVICE_CMD_KEY = config('SERVICE_CMD_KEY')
 
 PREPROCESSOR_CMD_KEY = config('PREPROCESSOR_CMD_KEY')
 EVENT_DISPATCHER_CMD_KEY = config('EVENT_DISPATCHER_CMD_KEY')
@@ -48,9 +47,9 @@ def string_to_dict_cast(str_value):
     return final_dict
 
 
-_DEFAULT_MOCKED_STR = "ObjectDetection:ObjectDetection,Person,Car;ColorDetection:ObjectColor,ColorDetection"
+# _DEFAULT_MOCKED_STR = "ObjectDetection:ObjectDetection,Person,Car;ColorDetection:ObjectColor,ColorDetection"
 
-MOCKED_SERVICE_REGISTRY = config('MOCKED_SERVICE_REGISTRY', cast=string_to_dict_cast,
-                                 default=_DEFAULT_MOCKED_STR)
+# MOCKED_SERVICE_REGISTRY = config('MOCKED_SERVICE_REGISTRY', cast=string_to_dict_cast,
+#                                  default=_DEFAULT_MOCKED_STR)
 
 LOGGING_LEVEL = config('LOGGING_LEVEL', default='DEBUG')

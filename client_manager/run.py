@@ -2,7 +2,7 @@
 from event_service_utils.streams.redis import RedisStreamFactory
 
 from client_manager.service import ClientManager
-from client_manager.mocked_service_registry import ServiceRegistry
+from client_manager.service_registry import ServiceRegistry
 
 from client_manager.conf import (
     REDIS_ADDRESS,
@@ -10,17 +10,9 @@ from client_manager.conf import (
     SERVICE_REGISTRY_CMD_KEY,
     SERVICE_STREAM_KEY,
     SERVICE_CMD_KEY_LIST,
-    PREPROCESSOR_CMD_KEY,
-    EVENT_DISPATCHER_CMD_KEY,
-    ADAPTATION_MONITOR_CMD_KEY,
-    WINDOW_MANAGER_CMD_KEY,
-    MATCHER_CMD_KEY,
-    FORWARDER_CMD_KEY,
     LOGGING_LEVEL,
     TRACER_REPORTING_HOST,
     TRACER_REPORTING_PORT,
-    MOCKED_SERVICE_REGISTRY,
-    LISTEN_CMD_ENTITY_TYPE_PUBJOIN,
     SERVICE_DETAILS,
 )
 

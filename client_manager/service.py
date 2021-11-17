@@ -6,13 +6,6 @@ from event_service_utils.services.event_driven import BaseEventDrivenCMDService
 from event_service_utils.tracing.jaeger import init_tracer
 from gnosis_epl.main import QueryParser
 
-# preprocessor_cmd_key,
-# event_dispatcher_cmd_key,
-# adaptation_planner_cmd_key,
-# window_manager_cmd_key,
-# matcher_cmd_key,
-# forwarder_cmd_key,
-
 
 class ClientManager(BaseEventDrivenCMDService):
     def __init__(self,
@@ -46,70 +39,20 @@ class ClientManager(BaseEventDrivenCMDService):
 
         self.service_registry = service_registry
 
+    def publish_registered_query_entity_del(self, query):
+        new_event_data = query.copy()
+        new_event_data['id'] = self.service_based_random_event_id()
+        new_event_data['deleted'] = True
+
+        self.logger.info(f'Publishing "RegisteredQuery" deletion entity: {new_event_data}')
+        self.write_event_with_trace(new_event_data, self.pub_stream_registered_query_entity)
+
     def publish_registered_query_entity(self, query):
         new_event_data = query.copy()
         new_event_data['id'] = self.service_based_random_event_id()
 
         self.logger.info(f'Publishing "RegisteredQuery" entity: {new_event_data}')
         self.write_event_with_trace(new_event_data, self.pub_stream_registered_query_entity)
-
-    # def send_start_preprocessor_action(self, publisher_id, source, resolution, fps, query_ids, buffer_stream_key):
-    #     new_event_data = {
-    #         'id': self.service_based_random_event_id(),
-    #         'action': 'startPreprocessing',
-    #         'publisher_id': publisher_id,
-    #         'source': source,
-    #         'resolution': resolution,
-    #         'fps': fps,
-    #         'buffer_stream_key': buffer_stream_key,
-    #         'query_ids': query_ids
-    #     }
-    #     self.logger.info(f'Sending "startPreprocessing" action: {new_event_data}')
-    #     self.write_event_with_trace(new_event_data, self.preprocessor_cmd)
-
-    # def send_stop_preprocessor_action(self, buffer_stream_key):
-    #     new_event_data = {
-    #         'id': self.service_based_random_event_id(),
-    #         'action': 'stopPreprocessing',
-    #         'buffer_stream_key': buffer_stream_key
-    #     }
-    #     self.logger.info(f'Sending "stopPreprocessing" action: {new_event_data}')
-    #     self.write_event_with_trace(new_event_data, self.preprocessor_cmd)
-
-    # def send_add_buffer_stream_key_to_event_dispatcher(self, publisher_id, buffer_stream_key):
-    #     new_event_data = {
-    #         'id': self.service_based_random_event_id(),
-    #         'action': 'addBufferStreamKey',
-    #         'publisher_id': publisher_id,
-    #         'buffer_stream_key': buffer_stream_key
-    #     }
-    #     self.logger.info(f'Sending "addBufferStreamKey" action: {new_event_data}')
-    #     self.write_event_with_trace(new_event_data, self.event_dispatcher_cmd)
-
-    # def send_del_buffer_stream_key_to_event_dispatcher(self, buffer_stream_key):
-    #     new_event_data = {
-    #         'id': self.service_based_random_event_id(),
-    #         'action': 'delBufferStreamKey',
-    #         'buffer_stream_key': buffer_stream_key
-    #     }
-    #     self.logger.info(f'Sending "delBufferStreamKey" action: {new_event_data}')
-    #     self.write_event_with_trace(new_event_data, self.event_dispatcher_cmd)
-
-    # def publish_updated_controlflow(self, query):
-    #     content_types = query['content']
-    #     publisher_id = query['from'][0]
-    #     service_function_chain = self.service_registry.get_service_function_chain_by_content_type_list(content_types)
-    #     new_event_data = {
-    #         'id': self.service_based_random_event_id(),
-    #         'action': 'updateControlFlow',
-    #         'data_flow': service_function_chain,
-    #         'qos_policies': query.get('qos_policies', {}),
-    #         'query_id': query['id'],
-    #         'publisher_id': publisher_id,
-    #     }
-
-    #     self.logger.info(f'Sending "updateControlFlow" action: {new_event_data}')
-    #     self.write_event_with_trace(new_event_data, self.adaptation_planner_cmd)
 
     def get_unique_buffer_hash(self, query_content, publisher_id, resolution, fps):
         keys_list = tuple(query_content) + tuple([publisher_id, resolution, fps])
@@ -132,12 +75,9 @@ class ClientManager(BaseEventDrivenCMDService):
             return
 
         service_chain = self.generate_query_service_chain(query)
-        query['id'] = query_id
-        query['subscriber_id'] = subscriber_id
-
         registered_query = {
             'subscriber_id': query['subscriber_id'],
-            'query_id': query['id'],
+            'query_id': query_id,
             'parsed_query': {
                 'from': query['from'],
                 'content': query['content'],
@@ -156,7 +96,7 @@ class ClientManager(BaseEventDrivenCMDService):
         return service_function_chain
 
     def generate_query_bufferstream_dict(self, query):
-        publisher_id = query['from'][0]
+        publisher_id = query['parsed_query']['from'][0]
         publisher = self.publishers.get(publisher_id, None)
         if publisher is None:
             return
@@ -164,7 +104,7 @@ class ClientManager(BaseEventDrivenCMDService):
         source = publisher['source']
         resolution = publisher['meta']['resolution']
         fps = publisher['meta']['fps']
-        query_content = query['content']
+        query_content = query['parsed_query']['content']
         buffer_stream_key = self.get_unique_buffer_hash(
             query_content, publisher_id, resolution, fps
         )
@@ -182,31 +122,6 @@ class ClientManager(BaseEventDrivenCMDService):
         query_id = query['query_id']
         buffer_query_set.add(query_id)
 
-    # def send_query_matching_for_matcher(self, query):
-    #     new_event_data = {
-    #         'id': self.service_based_random_event_id(),
-    #         'action': 'addQueryMatching',
-    #         'query_id': query['id'],
-    #         'match': query['match'],
-    #         'optional_match': query.get('optional_match', ''),
-    #         'where': query.get('where', ''),
-    #         'ret': query['ret'],
-    #     }
-
-    #     self.logger.info(f'Sending "addQueryMatching" action: {new_event_data}')
-    #     self.write_event_with_trace(new_event_data, self.matcher_cmd)
-
-    # def send_query_window_for_window_manager(self, query):
-    #     new_event_data = {
-    #         'id': self.service_based_random_event_id(),
-    #         'action': 'addQueryWindow',
-    #         'query_id': query['id'],
-    #         'window': query['window'],
-    #     }
-
-    #     self.logger.info(f'Sending "addQueryWindow" action: {new_event_data}')
-    #     self.write_event_with_trace(new_event_data, self.window_manager_cmd)
-
     def update_bufferstreams_from_del_query(self, query_id):
         buffer_to_remove = None
         for buffer_hash, query_set in self.buffer_hash_to_query_map.items():
@@ -217,8 +132,6 @@ class ClientManager(BaseEventDrivenCMDService):
                     break
         if buffer_to_remove:
             del self.buffer_hash_to_query_map[buffer_to_remove]
-            self.send_stop_preprocessor_action(buffer_to_remove)
-            self.send_del_buffer_stream_key_to_event_dispatcher(buffer_to_remove)
 
     def add_query_action(self, subscriber_id, query_text):
         query = self.create_query_dict(subscriber_id, query_text)
@@ -237,6 +150,7 @@ class ClientManager(BaseEventDrivenCMDService):
         if query is None:
             self.logger.info('Ignoring removal of non-existing query')
         else:
+            self.publish_registered_query_entity_del(query=query)
             self.update_bufferstreams_from_del_query(query_id)
 
     def pub_join_action(self, publisher_id, source, meta):
