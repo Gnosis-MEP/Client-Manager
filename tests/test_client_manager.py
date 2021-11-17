@@ -479,3 +479,20 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             self.service.buffer_hash_to_query_map,
             {bufferstream_key: set({'query_2'})}
         )
+
+    @patch('client_manager.service.ClientManager.process_service_worker_announced_event')
+    def test_process_event_type_should_call_process_service_worker_announced_event_with_proper_parameters(self, mocked_p_sw):
+        event_data = {
+            'id': 1,
+            'worker': {
+                'service_type': 'SomeService',
+                'stream_key': 'ss-data'
+            }
+        }
+
+        event_type = 'ServiceWorkerAnnounced'
+        json_msg = prepare_event_msg_tuple(event_data)[1]
+        self.service.process_event_type(event_type, event_data, json_msg)
+        mocked_p_sw.assert_called_once_with(
+            worker=event_data['worker'],
+        )

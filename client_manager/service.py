@@ -199,7 +199,9 @@ class ClientManager(BaseEventDrivenCMDService):
             )
 
         elif event_type == 'ServiceWorkerAnnounced':
-            self.process_service_worker_announced_event(event_data['worker'])
+            self.process_service_worker_announced_event(
+                worker=event_data['worker']
+            )
 
     def log_state(self):
         super(ClientManager, self).log_state()
