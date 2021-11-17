@@ -66,14 +66,15 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
 
     @patch('client_manager.service.ClientManager.process_event_type')
     def test_service_cmd_list_has_all_listened_event_types(self, mocked_process_event_type):
-        expected_event_types = [
+        expected_event_types = sorted([
             'PublisherRemoved',
             'PublisherCreated',
             'QueryRemoved',
-            'QueryCreated'
-        ]
-        self.assertEqual(
-            self.service.service_cmd_key_list,
+            'QueryCreated',
+            'ServiceWorkerAnnounced'
+        ])
+        self.assertListEqual(
+            sorted(self.service.service_cmd_key_list),
             expected_event_types
         )
 
@@ -148,7 +149,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         expected = '6962607866718b3cbd13556162c95dd9'
         self.assertEqual(res, expected)
 
-    @patch('client_manager.service.ClientManager.publish_registered_query_entity')
+    @patch('client_manager.service.ClientManager.publish_query_registered_entity')
     @patch('client_manager.service.ClientManager.update_bufferstreams_from_new_query')
     @patch('client_manager.service.ClientManager.create_query_dict')
     def test_process_query_created_event_should_properly_include_query_into_datastructure(
@@ -191,7 +192,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         self.assertIn(registered_query, self.service.queries.values())
 
 
-    @patch('client_manager.service.ClientManager.publish_registered_query_entity')
+    @patch('client_manager.service.ClientManager.publish_query_registered_entity')
     @patch('client_manager.service.ClientManager.update_bufferstreams_from_new_query')
     @patch('client_manager.service.ClientManager.create_query_dict')
     def test_process_query_created_event_shouldnt_process_query_if_no_pub_registered(
@@ -253,10 +254,10 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         self.assertNotIn(registered_query2, self.service.queries.values())
 
 
-    @patch('client_manager.service.ClientManager.publish_registered_query_entity_del')
+    # @patch('client_manager.service.ClientManager.publish_query_registered_entity_del')
     @patch('client_manager.service.ClientManager.update_bufferstreams_from_del_query')
     @patch('client_manager.service.ClientManager.create_query_id')
-    def test_process_query_removed_event_should_properly_remove_query_into_datastructure(self, mocked_query_id, mocked_buffer, p_q_del):
+    def test_process_query_removed_event_should_properly_remove_query_into_datastructure(self, mocked_query_id, mocked_buffer):
         subscriber_id = 'sub1'
         query_name = 'some query'
         query_id = 123
@@ -271,7 +272,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
 
         mocked_query_id.assert_called_once_with(subscriber_id, query_name)
         mocked_buffer.assert_called_once_with(query_id)
-        p_q_del.assert_called_once_with(query=query_dict)
+        # p_q_del.assert_called_once_with(query=query_dict)
         self.assertNotIn(123, self.service.queries.keys())
         self.assertNotIn(query_dict, self.service.queries.values())
 

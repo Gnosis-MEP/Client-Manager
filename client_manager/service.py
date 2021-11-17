@@ -42,16 +42,12 @@ class ClientManager(BaseEventDrivenCMDService):
         new_event_data = query.copy()
         new_event_data['id'] = self.service_based_random_event_id()
         new_event_data['deleted'] = True
+        # self.publish_event_type_to_stream(event_type='RegisteredQuery', new_event_data=new_event_data)
 
-        self.logger.info(f'Publishing "RegisteredQuery" deletion entity: {new_event_data}')
-        self.write_event_with_trace(new_event_data, self.pub_stream_registered_query_entity)
-
-    def publish_registered_query_entity(self, query):
+    def publish_query_registered_entity(self, query):
         new_event_data = query.copy()
         new_event_data['id'] = self.service_based_random_event_id()
-
-        self.logger.info(f'Publishing "QueryRegistered" entity: {new_event_data}')
-        self.write_event_with_trace(new_event_data, self.pub_stream_query_registered)
+        self.publish_event_type_to_stream(event_type='QueryRegistered', new_event_data=new_event_data)
 
     def get_unique_buffer_hash(self, query_content, publisher_id, resolution, fps):
         keys_list = tuple(query_content) + tuple([publisher_id, resolution, fps])
@@ -138,7 +134,7 @@ class ClientManager(BaseEventDrivenCMDService):
         if query is not None:
             if query['query_id'] not in self.queries.keys():
                 self.queries[query['query_id']] = query
-                self.publish_registered_query_entity(query=query)
+                self.publish_query_registered_entity(query=query)
                 self.update_bufferstreams_from_new_query(query=query)
             else:
                 self.logger.info('Ignoring duplicated query addition')
@@ -150,7 +146,7 @@ class ClientManager(BaseEventDrivenCMDService):
         if query is None:
             self.logger.info('Ignoring removal of non-existing query')
         else:
-            self.publish_registered_query_entity_del(query=query)
+            # self.publish_registered_query_entity_del(query=query)
             self.update_bufferstreams_from_del_query(query_id)
 
     def process_publisher_created_event(self, publisher_id, source, meta):
