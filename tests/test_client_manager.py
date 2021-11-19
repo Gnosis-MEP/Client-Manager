@@ -11,7 +11,7 @@ from client_manager.conf import (
     SERVICE_STREAM_KEY,
     SERVICE_CMD_KEY_LIST,
     SERVICE_DETAILS,
-    PUB_EVENT_LIST
+    PUB_EVENT_LIST,
 )
 
 

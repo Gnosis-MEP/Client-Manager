@@ -30,7 +30,7 @@ def main():
                 'publisher_id': 'pid',
                 'source': 'psource',
                 'meta': {
-                    'resolution': '300X300',
+                    'resolution': '300x300',
                     'fps': '30',
                 }
             }
