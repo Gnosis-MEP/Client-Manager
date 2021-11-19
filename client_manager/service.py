@@ -38,16 +38,16 @@ class ClientManager(BaseEventDrivenCMDService):
 
         self.service_registry = service_registry
 
-    def publish_registered_query_entity_del(self, query):
+    def publish_query_created(self, query):
+        new_event_data = query.copy()
+        new_event_data['id'] = self.service_based_random_event_id()
+        self.publish_event_type_to_stream(event_type='QueryCreated', new_event_data=new_event_data)
+
+    def publish_query_removed(self, query):
         new_event_data = query.copy()
         new_event_data['id'] = self.service_based_random_event_id()
         new_event_data['deleted'] = True
-        # self.publish_event_type_to_stream(event_type='RegisteredQuery', new_event_data=new_event_data)
-
-    def publish_query_registered_entity(self, query):
-        new_event_data = query.copy()
-        new_event_data['id'] = self.service_based_random_event_id()
-        self.publish_event_type_to_stream(event_type='QueryRegistered', new_event_data=new_event_data)
+        self.publish_event_type_to_stream(event_type='QueryRemoved', new_event_data=new_event_data)
 
     def get_unique_buffer_hash(self, query_content, publisher_id, resolution, fps):
         keys_list = tuple(query_content) + tuple([publisher_id, resolution, fps])
@@ -129,27 +129,27 @@ class ClientManager(BaseEventDrivenCMDService):
         if buffer_to_remove:
             del self.buffer_hash_to_query_map[buffer_to_remove]
 
-    def process_query_created_event(self, subscriber_id, query_text):
+    def process_query_received(self, subscriber_id, query_text):
         query = self.create_query_dict(subscriber_id, query_text)
         if query is not None:
             if query['query_id'] not in self.queries.keys():
                 self.queries[query['query_id']] = query
-                self.publish_query_registered_entity(query=query)
+                self.publish_query_created(query=query)
                 self.update_bufferstreams_from_new_query(query=query)
             else:
                 self.logger.info('Ignoring duplicated query addition')
 
-    def process_query_removed_event(self, subscriber_id, query_name):
+    def process_query_deletion_requested(self, subscriber_id, query_name):
         query_id = self.create_query_id(subscriber_id, query_name)
 
         query = self.queries.pop(query_id, None)
         if query is None:
             self.logger.info('Ignoring removal of non-existing query')
         else:
-            # self.publish_registered_query_entity_del(query=query)
+            self.publish_query_removed(query=query)
             self.update_bufferstreams_from_del_query(query_id)
 
-    def process_publisher_created_event(self, publisher_id, source, meta):
+    def process_publisher_created(self, publisher_id, source, meta):
         if publisher_id not in self.publishers.keys():
             self.publishers[publisher_id] = {
                 'id': publisher_id,
@@ -159,12 +159,12 @@ class ClientManager(BaseEventDrivenCMDService):
         else:
             self.logger.info('Ignoring duplicated publisher incluson')
 
-    def process_publisher_removed_event(self, publisher_id):
+    def process_publisher_removed(self, publisher_id):
         publisher = self.publishers.pop(publisher_id, None)
         if publisher is None:
             self.logger.info('Ignoring removal of non-existing publisher')
 
-    def process_service_worker_announced_event(self, worker):
+    def process_service_worker_announced(self, worker):
         service_type = worker['service_type']
         stream_key = worker['stream_key']
         service_dict = self.service_registry.available_services.setdefault(service_type, {'workers': {}})
@@ -173,29 +173,30 @@ class ClientManager(BaseEventDrivenCMDService):
     def process_event_type(self, event_type, event_data, json_msg):
         if not super(ClientManager, self).process_event_type(event_type, event_data, json_msg):
             return False
-        if event_type == 'QueryCreated':
-            self.process_query_created_event(
+
+        if event_type == 'QueryReceived':
+            self.process_query_received(
                 subscriber_id=event_data['subscriber_id'],
                 query_text=event_data['query']
             )
-        elif event_type == 'QueryRemoved':
-            self.process_query_removed_event(
+        elif event_type == 'QueryDeletionRequested':
+            self.process_query_deletion_requested(
                 subscriber_id=event_data['subscriber_id'],
                 query_name=event_data['query_name']
             )
         elif event_type == 'PublisherCreated':
-            self.process_publisher_created_event(
+            self.process_publisher_created(
                 publisher_id=event_data['publisher_id'],
                 source=event_data['source'],
                 meta=event_data['meta']
             )
         elif event_type == 'PublisherRemoved':
-            self.process_publisher_removed_event(
+            self.process_publisher_removed(
                 publisher_id=event_data['publisher_id']
             )
 
         elif event_type == 'ServiceWorkerAnnounced':
-            self.process_service_worker_announced_event(
+            self.process_service_worker_announced(
                 worker=event_data['worker']
             )
 

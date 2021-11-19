@@ -69,42 +69,42 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         expected_event_types = sorted([
             'PublisherRemoved',
             'PublisherCreated',
-            'QueryRemoved',
-            'QueryCreated',
-            'ServiceWorkerAnnounced'
+            'QueryReceived',
+            'QueryDeletionRequested',
+            'ServiceWorkerAnnounced',
         ])
         self.assertListEqual(
             sorted(self.service.service_cmd_key_list),
             expected_event_types
         )
 
-    @patch('client_manager.service.ClientManager.process_query_created_event')
-    def test_process_event_type_should_call_process_query_created_event_with_proper_parameters(self, mocked_q_created_event):
+    @patch('client_manager.service.ClientManager.process_query_received')
+    def test_process_event_type_should_call_process_query_received_with_proper_parameters(self, mocked_q_created_event):
         event_data = {
             'id': 1,
             'subscriber_id': 'sub_id',
             'query': self.SIMPLE_QUERY_TEXT
         }
-        event_type = 'QueryCreated'
+        event_type = 'QueryReceived'
         json_msg = prepare_event_msg_tuple(event_data)[1]
         self.service.process_event_type(event_type, event_data, json_msg)
         mocked_q_created_event.assert_called_once_with(subscriber_id=event_data['subscriber_id'], query_text=event_data['query'])
 
-    @patch('client_manager.service.ClientManager.process_query_removed_event')
-    def test_process_event_type_should_call_process_query_removed_event_with_proper_parameters(self, mocked_del_query):
+    @patch('client_manager.service.ClientManager.process_query_deletion_requested')
+    def test_process_event_type_should_call_process_query_deletion_requested_with_proper_parameters(self, mocked_del_query):
         event_data = {
             'id': 1,
             'subscriber_id': 'sub_id',
             'query_name': 'my_first_query'
         }
-        event_type = 'QueryRemoved'
+        event_type = 'QueryDeletionRequested'
         json_msg = prepare_event_msg_tuple(event_data)[1]
         self.service.process_event_type(event_type, event_data, json_msg)
         mocked_del_query.assert_called_once_with(
             subscriber_id=event_data['subscriber_id'], query_name=event_data['query_name'])
 
-    @patch('client_manager.service.ClientManager.process_publisher_created_event')
-    def test_process_event_type_should_call_process_publisher_created_event_with_proper_parameters(self, mocked_pub_join):
+    @patch('client_manager.service.ClientManager.process_publisher_created')
+    def test_process_event_type_should_call_process_publisher_created_with_proper_parameters(self, mocked_pub_join):
         event_data = {
             'id': 1,
             'publisher_id': 'pub1',
@@ -128,8 +128,8 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             meta=event_data['meta'],
         )
 
-    @patch('client_manager.service.ClientManager.process_publisher_removed_event')
-    def test_process_event_type_should_call_process_publisher_removed_event_with_proper_parameters(self, mocked_pub_leave):
+    @patch('client_manager.service.ClientManager.process_publisher_removed')
+    def test_process_event_type_should_call_process_publisher_removed_with_proper_parameters(self, mocked_pub_leave):
         event_data = {
             'id': 1,
             'publisher_id': 'pub1'
@@ -149,10 +149,10 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         expected = '6962607866718b3cbd13556162c95dd9'
         self.assertEqual(res, expected)
 
-    @patch('client_manager.service.ClientManager.publish_query_registered_entity')
+    @patch('client_manager.service.ClientManager.publish_query_created')
     @patch('client_manager.service.ClientManager.update_bufferstreams_from_new_query')
     @patch('client_manager.service.ClientManager.create_query_dict')
-    def test_process_query_created_event_should_properly_include_query_into_datastructure(
+    def test_process_query_received_should_properly_include_query_into_datastructure(
             self, mocked_query_dict, mocked_buffer, mocked_pub):
         subscriber_id = 'sub1'
         query_id = 123
@@ -184,7 +184,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             return_value=service_chain)
 
         mocked_query_dict.return_value = registered_query
-        self.service.process_query_created_event(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_received(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
         mocked_query_dict.assert_called_once_with(subscriber_id, self.SIMPLE_QUERY_TEXT)
         mocked_buffer.assert_called_once_with(query=registered_query)
@@ -192,16 +192,16 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         self.assertIn(registered_query, self.service.queries.values())
 
 
-    @patch('client_manager.service.ClientManager.publish_query_registered_entity')
+    @patch('client_manager.service.ClientManager.publish_query_created')
     @patch('client_manager.service.ClientManager.update_bufferstreams_from_new_query')
     @patch('client_manager.service.ClientManager.create_query_dict')
-    def test_process_query_created_event_shouldnt_process_query_if_no_pub_registered(
+    def test_process_query_received_shouldnt_process_query_if_no_pub_registered(
             self, mocked_query_dict, mocked_buffer, mocked_pub):
         subscriber_id = 'sub1'
         query_id = 123
 
         mocked_query_dict.return_value = None
-        self.service.process_query_created_event(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_received(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
         mocked_query_dict.assert_called_once_with(subscriber_id, self.SIMPLE_QUERY_TEXT)
         self.assertFalse(mocked_buffer.called)
@@ -209,8 +209,12 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
 
         self.assertNotIn(query_id, self.service.queries.keys())
 
+
+    @patch('client_manager.service.ClientManager.publish_query_created')
+    @patch('client_manager.service.ClientManager.update_bufferstreams_from_new_query')
     @patch('client_manager.service.ClientManager.create_query_dict')
-    def test_process_query_created_event_shouldn_include_duplicated_query(self, mocked_query_dict):
+    def test_process_query_received_shouldn_include_duplicated_query(
+            self, mocked_query_dict, mocked_buffer, mocked_pub):
         subscriber_id = 'sub1'
         query_id = 123
         service_chain = ['ObjectDetection', 'ColorDetection']
@@ -244,20 +248,20 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             return_value=service_chain)
 
         mocked_query_dict.return_value = registered_query
-        self.service.process_query_created_event(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_received(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
         mocked_query_dict.return_value = registered_query2
-        self.service.process_query_created_event(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_received(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
         self.assertIn(123, self.service.queries.keys())
         self.assertIn(registered_query, self.service.queries.values())
         self.assertNotIn(registered_query2, self.service.queries.values())
 
 
-    # @patch('client_manager.service.ClientManager.publish_query_registered_entity_del')
+    @patch('client_manager.service.ClientManager.publish_query_removed')
     @patch('client_manager.service.ClientManager.update_bufferstreams_from_del_query')
     @patch('client_manager.service.ClientManager.create_query_id')
-    def test_process_query_removed_event_should_properly_remove_query_into_datastructure(self, mocked_query_id, mocked_buffer):
+    def test_process_query_deletion_requested_should_properly_remove_query_into_datastructure(self, mocked_query_id, mocked_buffer, mocked_del_query):
         subscriber_id = 'sub1'
         query_name = 'some query'
         query_id = 123
@@ -268,11 +272,11 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         }
 
         mocked_query_id.return_value = query_id
-        self.service.process_query_removed_event(subscriber_id, query_name=query_name)
+        self.service.process_query_deletion_requested(subscriber_id, query_name=query_name)
 
         mocked_query_id.assert_called_once_with(subscriber_id, query_name)
         mocked_buffer.assert_called_once_with(query_id)
-        # p_q_del.assert_called_once_with(query=query_dict)
+        mocked_del_query.assert_called_once_with(query=query_dict)
         self.assertNotIn(123, self.service.queries.keys())
         self.assertNotIn(query_dict, self.service.queries.values())
 
@@ -280,7 +284,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         self.assertIn({'other': '...'}, self.service.queries.values())
 
     @patch('client_manager.service.ClientManager.create_query_id')
-    def test_process_query_removed_event_should_ignore_deleting_nonexising_query(self, mocked_query_id):
+    def test_process_query_deletion_requested_should_ignore_deleting_nonexising_query(self, mocked_query_id):
         subscriber_id = 'sub1'
         query_name = 'some query'
         query_id = 123
@@ -290,7 +294,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         }
 
         mocked_query_id.return_value = query_id
-        self.service.process_query_removed_event(subscriber_id, query_name=query_name)
+        self.service.process_query_deletion_requested(subscriber_id, query_name=query_name)
 
         mocked_query_id.assert_called_once_with(subscriber_id, query_name)
         self.assertNotIn(123, self.service.queries.keys())
@@ -299,7 +303,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         self.assertIn(456, self.service.queries.keys())
         self.assertIn({'other': '...'}, self.service.queries.values())
 
-    def test_process_publisher_created_event_should_properly_include_publisher_into_datastructure(self):
+    def test_process_publisher_created_should_properly_include_publisher_into_datastructure(self):
 
         publisher_id = 'pub1'
         source = 'http://etc.com',
@@ -309,12 +313,12 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             'source': source,
             'meta': meta
         }
-        self.service.process_publisher_created_event(publisher_id, source, meta)
+        self.service.process_publisher_created(publisher_id, source, meta)
 
         self.assertIn(publisher_id, self.service.publishers.keys())
         self.assertIn(publisher, self.service.publishers.values())
 
-    def test_process_publisher_removed_event_should_properly_remove_publisher_into_datastructure(self):
+    def test_process_publisher_removed_should_properly_remove_publisher_into_datastructure(self):
         publisher_id = 'pub1'
         source = 'http://etc.com',
         meta = {'fps': 30}
@@ -323,8 +327,8 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             'source': source,
             'meta': meta
         }
-        self.service.process_publisher_created_event(publisher_id, source, meta)
-        self.service.process_publisher_removed_event(publisher_id)
+        self.service.process_publisher_created(publisher_id, source, meta)
+        self.service.process_publisher_removed(publisher_id)
 
         self.assertNotIn(publisher_id, self.service.publishers.keys())
         self.assertNotIn(publisher, self.service.publishers.values())
@@ -481,8 +485,8 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             {bufferstream_key: set({'query_2'})}
         )
 
-    @patch('client_manager.service.ClientManager.process_service_worker_announced_event')
-    def test_process_event_type_should_call_process_service_worker_announced_event_with_proper_parameters(self, mocked_p_sw):
+    @patch('client_manager.service.ClientManager.process_service_worker_announced')
+    def test_process_event_type_should_call_process_service_worker_announced_with_proper_parameters(self, mocked_p_sw):
         event_data = {
             'id': 1,
             'worker': {

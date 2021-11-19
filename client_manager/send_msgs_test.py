@@ -36,6 +36,10 @@ def main():
             }
         )
     )
+
+
+    import ipdb; ipdb.set_trace()
+
     query_text = """
     REGISTER QUERY my_first_query
     OUTPUT K_GRAPH_JSON
@@ -46,16 +50,28 @@ def main():
     RETURN *
     """.strip()
 
-    addQuery_cmd = stream_factory.create('QueryCreated', stype='streamOnly')
+    addQuery_cmd = stream_factory.create('QueryReceived', stype='streamOnly')
     addQuery_cmd.write_events(
         new_msg(
             {
                 'subscriber_id': 'sid',
-                'query_id': 'qid',
                 'query': query_text
             }
         )
     )
+
+    import ipdb; ipdb.set_trace()
+    delQuery_cmd = stream_factory.create('QueryDeletionRequested', stype='streamOnly')
+    delQuery_cmd.write_events(
+        new_msg(
+            {
+                'subscriber_id': 'sid',
+                'query_name': 'my_first_query',
+            }
+        )
+    )
+
+    import ipdb; ipdb.set_trace()
     # service_stream = stream_factory.create(SERVICE_STREAM_KEY, stype='streamOnly')
     # send_data_msg(service_stream)
 
