@@ -37,6 +37,29 @@ def main():
         )
     )
 
+    import ipdb; ipdb.set_trace()
+
+    addworker_cmd = stream_factory.create('ServiceWorkerAnnounced', stype='streamOnly')
+    addworker_cmd.write_events(
+        new_msg(
+            {
+                'worker': {
+                    'service_type': 'ObjectDetection',
+                    'stream_key': 'objworker-key'
+                }
+            }
+        )
+    )
+    addworker_cmd.write_events(
+        new_msg(
+            {
+                'worker': {
+                    'service_type': 'ColorDetection',
+                    'stream_key': 'clrworker-key'
+                }
+            }
+        )
+    )
 
     import ipdb; ipdb.set_trace()
 

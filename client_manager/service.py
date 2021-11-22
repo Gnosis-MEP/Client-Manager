@@ -71,7 +71,11 @@ class ClientManager(BaseEventDrivenCMDService):
                 'name': parsed_query['name'],
                 'from': parsed_query['from'],
                 'content': parsed_query['content'],
+                'match': parsed_query['match'],
+                'optional_match': parsed_query.get('optional_match', ''),
+                'where': parsed_query.get('where', ''),
                 'window': parsed_query['window'],
+                'ret': parsed_query['ret'],
                 'qos_policies': parsed_query.get('qos_policies', {}),
                 # 'cypher_query': query['cypher_query'],
             }
