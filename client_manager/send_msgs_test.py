@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import time
 import uuid
 import json
 from event_service_utils.streams.redis import RedisStreamFactory
@@ -37,7 +38,6 @@ def main():
         )
     )
 
-    import ipdb; ipdb.set_trace()
 
     addworker_cmd = stream_factory.create('ServiceWorkerAnnounced', stype='streamOnly')
     addworker_cmd.write_events(
@@ -54,6 +54,7 @@ def main():
             }
         )
     )
+
     addworker_cmd.write_events(
         new_msg(
             {
@@ -68,6 +69,7 @@ def main():
             }
         )
     )
+
     addworker_cmd.write_events(
         new_msg(
             {
@@ -82,7 +84,9 @@ def main():
             }
         )
     )
-    import ipdb; ipdb.set_trace()
+    # import ipdb; ipdb.set_trace()
+    time.sleep(1.5)
+
 
     query_text = """
     REGISTER QUERY my_first_query
@@ -91,6 +95,7 @@ def main():
     MATCH (c1:Car {color:'blue'}), (c2:Car {color:'white'})
     FROM pid
     WITHIN TUMBLING_COUNT_WINDOW(2)
+    WITH_QOS latency = 'min'
     RETURN *
     """.strip()
 
@@ -103,6 +108,28 @@ def main():
             }
         )
     )
+
+    import ipdb; ipdb.set_trace()
+    # events = workermon_stream.read_events()
+    worker_stream = stream_factory.create('objworker-key', stype='streamOnly')
+    for i in range(10):
+        worker_stream.write_events(
+            new_msg(
+                {
+                    'msg': 'a'
+                }
+            )
+        )
+    import ipdb; ipdb.set_trace()
+    for i in range(100):
+        worker_stream.write_events(
+            new_msg(
+                {
+                    'msg': 'a'
+                }
+            )
+        )
+
 
     import ipdb; ipdb.set_trace()
     delQuery_cmd = stream_factory.create('QueryDeletionRequested', stype='streamOnly')
