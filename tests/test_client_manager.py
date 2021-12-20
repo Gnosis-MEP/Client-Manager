@@ -64,20 +64,6 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         self.assertTrue(mocked_process_event_type.called)
         self.service.process_event_type.assert_called_once_with(event_type=event_type, event_data=event_data, json_msg=msg_tuple[1])
 
-    @patch('client_manager.service.ClientManager.process_event_type')
-    def test_service_cmd_list_has_all_listened_event_types(self, mocked_process_event_type):
-        expected_event_types = sorted([
-            'PublisherRemoved',
-            'PublisherCreated',
-            'QueryReceived',
-            'QueryDeletionRequested',
-            'ServiceWorkerAnnounced',
-        ])
-        self.assertListEqual(
-            sorted(self.service.service_cmd_key_list),
-            expected_event_types
-        )
-
     @patch('client_manager.service.ClientManager.process_query_received')
     def test_process_event_type_should_call_process_query_received_with_proper_parameters(self, mocked_q_created_event):
         event_data = {
