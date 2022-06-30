@@ -2,23 +2,28 @@
 from event_service_utils.streams.redis import RedisStreamFactory
 
 from client_manager.service import ClientManager
-from client_manager.service_registry import ServiceRegistry
+from client_manager.mocked_service_registry import MockedRegistry
 
 from client_manager.conf import (
     REDIS_ADDRESS,
     REDIS_PORT,
-    PUB_EVENT_LIST,
     SERVICE_STREAM_KEY,
-    SERVICE_CMD_KEY_LIST,
+    SERVICE_CMD_KEY,
+    PREPROCESSOR_CMD_KEY,
+    EVENT_DISPATCHER_CMD_KEY,
+    ADAPTATION_MONITOR_CMD_KEY,
+    WINDOW_MANAGER_CMD_KEY,
+    MATCHER_CMD_KEY,
+    FORWARDER_CMD_KEY,
     LOGGING_LEVEL,
     TRACER_REPORTING_HOST,
     TRACER_REPORTING_PORT,
-    SERVICE_DETAILS,
+    MOCKED_SERVICE_REGISTRY,
 )
 
 
 def run_service():
-    service_registry = ServiceRegistry()
+    mocked_registry = MockedRegistry()
 
     tracer_configs = {
         'reporting_host': TRACER_REPORTING_HOST,
@@ -27,11 +32,15 @@ def run_service():
     stream_factory = RedisStreamFactory(host=REDIS_ADDRESS, port=REDIS_PORT)
     service = ClientManager(
         service_stream_key=SERVICE_STREAM_KEY,
-        service_cmd_key_list=SERVICE_CMD_KEY_LIST,
-        pub_event_list=PUB_EVENT_LIST,
-        service_details=SERVICE_DETAILS,
+        service_cmd_key=SERVICE_CMD_KEY,
         stream_factory=stream_factory,
-        service_registry=service_registry,
+        preprocessor_cmd_key=PREPROCESSOR_CMD_KEY,
+        event_dispatcher_cmd_key=EVENT_DISPATCHER_CMD_KEY,
+        adaptation_planner_cmd_key=ADAPTATION_MONITOR_CMD_KEY,
+        window_manager_cmd_key=WINDOW_MANAGER_CMD_KEY,
+        matcher_cmd_key=MATCHER_CMD_KEY,
+        forwarder_cmd_key=FORWARDER_CMD_KEY,
+        mocked_registry=mocked_registry,
         logging_level=LOGGING_LEVEL,
         tracer_configs=tracer_configs
     )
