@@ -74,7 +74,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
         event_type = 'QueryReceived'
         json_msg = prepare_event_msg_tuple(event_data)[1]
         self.service.process_event_type(event_type, event_data, json_msg)
-        mocked_q_created_event.assert_called_once_with(subscriber_id=event_data['subscriber_id'], query_text=event_data['query'])
+        mocked_q_created_event.assert_called_once_with(query_received_event_id=event_data['id'],subscriber_id=event_data['subscriber_id'], query_text=event_data['query'])
 
     @patch('client_manager.service.ClientManager.process_query_deletion_requested')
     def test_process_event_type_should_call_process_query_deletion_requested_with_proper_parameters(self, mocked_del_query):
@@ -140,6 +140,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
     @patch('client_manager.service.ClientManager.create_query_dict')
     def test_process_query_received_should_properly_include_query_into_datastructure(
             self, mocked_query_dict, mocked_buffer, mocked_pub):
+        query_received_event_id = 'a_event_id'
         subscriber_id = 'sub1'
         query_id = 123
         service_chain = ['ObjectDetection', 'ColorDetection']
@@ -163,6 +164,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
                 'fps': "100",
             },
             'service_chain': service_chain,
+            'query_received_event_id': query_received_event_id,
         }
 
         self.service.mocked_registry = MagicMock()
@@ -170,9 +172,9 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             return_value=service_chain)
 
         mocked_query_dict.return_value = registered_query
-        self.service.process_query_received(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_received(query_received_event_id, subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
-        mocked_query_dict.assert_called_once_with(subscriber_id, self.SIMPLE_QUERY_TEXT)
+        mocked_query_dict.assert_called_once_with(query_received_event_id, subscriber_id, self.SIMPLE_QUERY_TEXT)
         mocked_buffer.assert_called_once_with(query=registered_query)
         self.assertIn(query_id, self.service.queries.keys())
         self.assertIn(registered_query, self.service.queries.values())
@@ -183,13 +185,14 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
     @patch('client_manager.service.ClientManager.create_query_dict')
     def test_process_query_received_shouldnt_process_query_if_no_pub_registered(
             self, mocked_query_dict, mocked_buffer, mocked_pub):
+        query_received_event_id = 'a_event_id'
         subscriber_id = 'sub1'
         query_id = 123
 
         mocked_query_dict.return_value = None
-        self.service.process_query_received(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_received(query_received_event_id, subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
-        mocked_query_dict.assert_called_once_with(subscriber_id, self.SIMPLE_QUERY_TEXT)
+        mocked_query_dict.assert_called_once_with(query_received_event_id, subscriber_id, self.SIMPLE_QUERY_TEXT)
         self.assertFalse(mocked_buffer.called)
         self.assertFalse(mocked_pub.called)
 
@@ -201,6 +204,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
     @patch('client_manager.service.ClientManager.create_query_dict')
     def test_process_query_received_shouldn_include_duplicated_query(
             self, mocked_query_dict, mocked_buffer, mocked_pub):
+        query_received_event_id = 'a_event_id'
         subscriber_id = 'sub1'
         query_id = 123
         service_chain = ['ObjectDetection', 'ColorDetection']
@@ -224,6 +228,7 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
                 'fps': "100",
             },
             'service_chain': service_chain,
+            'query_received_event_id': query_received_event_id,
         }
 
         registered_query2 = copy.deepcopy(registered_query)
@@ -234,10 +239,10 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
             return_value=service_chain)
 
         mocked_query_dict.return_value = registered_query
-        self.service.process_query_received(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_received(query_received_event_id, subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
         mocked_query_dict.return_value = registered_query2
-        self.service.process_query_received(subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
+        self.service.process_query_received(query_received_event_id, subscriber_id, query_text=self.SIMPLE_QUERY_TEXT)
 
         self.assertIn(123, self.service.queries.keys())
         self.assertIn(registered_query, self.service.queries.values())
@@ -401,17 +406,19 @@ class TestClientManager(MockedEventDrivenServiceStreamTestCase):
     @patch('client_manager.service.ClientManager.generate_query_service_chain')
     @patch('client_manager.service.ClientManager.create_query_id')
     def test_create_query_dict_parses_query_and_return_proper_dict(self, mocked_query_id, mocked_sc, mocked_buff_dict):
+        query_received_event_id = 'a_event_id'
         subscriber_id = 'sub_1'
         query_id = '123'
         expected_query_name = 'my_first_query'
         mocked_query_id.return_value = query_id
-        query = self.service.create_query_dict(subscriber_id, self.SIMPLE_QUERY_TEXT)
+        query = self.service.create_query_dict(query_received_event_id, subscriber_id, self.SIMPLE_QUERY_TEXT)
         mocked_query_id.assert_called_once_with(subscriber_id, expected_query_name)
         self.assertIn('subscriber_id', query.keys())
         self.assertIn('query_id', query.keys())
         self.assertIn('parsed_query', query.keys())
         self.assertIn('buffer_stream', query.keys())
         self.assertIn('service_chain', query.keys())
+        self.assertIn('query_received_event_id', query.keys())
 
         self.assertEqual(query['query_id'], query_id)
         self.assertEqual(query['subscriber_id'], subscriber_id)

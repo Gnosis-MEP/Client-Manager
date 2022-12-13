@@ -60,7 +60,7 @@ class ClientManager(BaseEventDrivenCMDService):
         query_id = hashlib.md5(key.encode('utf-8')).hexdigest()
         return query_id
 
-    def create_query_dict(self, subscriber_id, query_text):
+    def create_query_dict(self, query_received_event_id, subscriber_id, query_text):
         parsed_query = self.query_parser.parse(query_text)
         query_id = self.create_query_id(subscriber_id, parsed_query['name'])
 
@@ -78,7 +78,8 @@ class ClientManager(BaseEventDrivenCMDService):
                 'ret': parsed_query['ret'],
                 'qos_policies': parsed_query.get('qos_policies', {}),
                 # 'cypher_query': query['cypher_query'],
-            }
+            },
+            'query_received_event_id': query_received_event_id
         }
         publisher_id = query['parsed_query']['from'][0]
         buffer_stream_dict = self.generate_query_bufferstream_dict(query)
@@ -133,8 +134,8 @@ class ClientManager(BaseEventDrivenCMDService):
         if buffer_to_remove:
             del self.buffer_hash_to_query_map[buffer_to_remove]
 
-    def process_query_received(self, subscriber_id, query_text):
-        query = self.create_query_dict(subscriber_id, query_text)
+    def process_query_received(self, query_received_event_id, subscriber_id, query_text):
+        query = self.create_query_dict(query_received_event_id, subscriber_id, query_text)
         if query is not None:
             if query['query_id'] not in self.queries.keys():
                 self.queries[query['query_id']] = query
@@ -180,8 +181,9 @@ class ClientManager(BaseEventDrivenCMDService):
 
         if event_type == 'QueryReceived':
             self.process_query_received(
+                query_received_event_id=event_data['id'],
                 subscriber_id=event_data['subscriber_id'],
-                query_text=event_data['query']
+                query_text=event_data['query'],
             )
         elif event_type == 'QueryDeletionRequested':
             self.process_query_deletion_requested(
