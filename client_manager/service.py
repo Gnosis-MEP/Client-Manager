@@ -69,6 +69,7 @@ class ClientManager(BaseEventDrivenCMDService):
             'query_id': query_id,
             'parsed_query': {
                 'name': parsed_query['name'],
+                'output': parsed_query['output'],
                 'from': parsed_query['from'],
                 'content': parsed_query['content'],
                 'match': parsed_query['match'],
